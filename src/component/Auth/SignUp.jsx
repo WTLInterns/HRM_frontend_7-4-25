@@ -6,15 +6,15 @@ import { useApp } from "../../context/AppContext";
 
 const SignUp = () => {
   const { saveUser } = useApp();
-  const [fname, setFname] = useState("");
-  const [lname, setLname] = useState("");
+  const [firstName, setFname] = useState("");
+  const [lastName, setLname] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const role = "USER";
+  const role = "EMPLOYEE";
 
   const navigate = useNavigate();
 
@@ -29,13 +29,10 @@ const SignUp = () => {
     }
 
     try {
-      const userData = { fname, lname, email, phone, password, role };
+      const userData = { firstName, lastName, email, phone, password, role };
       await saveUser(userData);
       setSuccess("User registered successfully!");
       toast.success("Registed Successfully");
-      setTimeout(() => {
-        navigate("/");
-      }, 3000);
     } catch (err) {
       if (err.response && err.response.status === 400) {
         setError("Email is already existed");
@@ -62,7 +59,7 @@ const SignUp = () => {
             <input
               type="text"
               id="fname"
-              value={fname}
+              value={firstName}
               onChange={(e) => setFname(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               required
@@ -79,7 +76,7 @@ const SignUp = () => {
             <input
               type="text"
               id="lname"
-              value={lname}
+              value={lastName}
               onChange={(e) => setLname(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               required
@@ -163,7 +160,7 @@ const SignUp = () => {
         </form>
         <p className="mt-4 text-center text-sm text-gray-600">
           Already have an account?
-          <Link to="/login" className="text-red-500 hover:underline">
+          <Link to="/" className="text-red-500 hover:underline">
             Login
           </Link>
         </p>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const AppContext = createContext();
 
@@ -9,14 +10,33 @@ export const useApp = () => {
 };
 
 export const AppProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [authToken, setAuthToken] = useState("");
-  const [cartItems, setCartItems] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [order, setOrder] = useState([]);
-  // const [role, setRole] = useState("");
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  const [authToken, setAuthToken] = useState(
+    () => localStorage.getItem("token") || ""
+  );
+  const [emp, setEmp] = useState([]);
+  const [role, setRole] = useState(user?.role || "");
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (authToken) {
+      localStorage.setItem("token", authToken);
+    } else {
+      localStorage.removeItem("token");
+    }
+  }, [authToken]);
 
   const loginUser = async (email, password) => {
     try {
@@ -24,11 +44,10 @@ export const AppProvider = ({ children }) => {
         email,
         password,
       });
-      const { token, userData } = response.data;
+      console.log("API Response:", response.data);
+      const { token, role, email: userEmail } = response.data;
       setAuthToken(token);
-      setUser(userData);
-
-      localStorage.setItem("token", token);
+      setUser({ email: userEmail, role });
       return response.data;
     } catch (error) {
       console.error("Login failed:", error);
@@ -39,16 +58,12 @@ export const AppProvider = ({ children }) => {
   const saveUser = async (userData) => {
     try {
       const response = await axios.post(
-        "http://localhost:8282/auth/save",
+        "http://localhost:8282/auth/register",
         userData
       );
-
       const { token, user } = response.data;
       setAuthToken(token);
       setUser(user);
-
-      localStorage.setItem("token", token);
-
       console.log(response.data);
       return response.data;
     } catch (error) {
@@ -57,19 +72,13 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // const registerUser = async (userData) => {
-  //   try {
-  //     const response = await axios.post(
-  //       "http://localhost:8282/auth/register",
-  //       userData
-  //     );
-  //     return response.data;
-  //     console.log(response.data);
-  //   } catch (error) {
-  //     console.error("Registration failed:", error);
-  //     throw error;
-  //   }
-  // };
+  const logoutUser = () => {
+    setAuthToken("");
+    setUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+  };
 
   const fetchUserProfile = async () => {
     const token = localStorage.getItem("token");
@@ -77,9 +86,7 @@ export const AppProvider = ({ children }) => {
 
     try {
       const response = await axios.get("http://localhost:8282/auth/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setUser(response.data);
     } catch (error) {
@@ -87,323 +94,106 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    if (authToken) {
-      fetchUserProfile();
-    } else {
-      const token = localStorage.getItem("token");
-      if (token) {
-        setAuthToken(token);
-        fetchUserProfile();
-      }
-    }
-  }, [authToken]);
-
-  const fetchAllProducts = async () => {
-    try {
-      const response = await axios.get(
-        "http://localhost:8282/auth/getAllProduct"
-      );
-
-      if (response.status === 200) {
-        setProducts(response.data);
-        console.log("Products fetched:", response.data);
-      } else {
-        console.error("Error fetching products:", response);
-      }
-    } catch (error) {
-      console.error("API Error while fetching products:", error);
-    }
-  };
-
-  const logoutUser = () => {
-    setAuthToken("");
-    setUser(null);
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
-  // for all product
-
-  // const addProduct = async (newProduct) => {
-  //   const token = localStorage.getItem("token");
-
-  //   if (!token) {
-  //     console.error("No authentication token found");
-  //     return;
-  //   }
-
-  //   try {
-  //     const response = await axios.post(
-  //       "http://localhost:8282/admin/create-product", // Your API URL
-  //       newProduct,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //       }
-  //     );
-
-  //     if (response.data && response.status === 201) {
-  //       setProducts((prevProducts) => [...prevProducts, response.data]); // Add the new product
-  //       return true; // Indicate success
-  //     } else {
-  //       console.error("Failed to add product:", response);
-  //       return false; // Failure case
-  //     }
-  //   } catch (error) {
-  //     console.error("Error adding product:", error);
-  //     return false; // Error case
-  //   }
-  // };
-
-  const getCartItems = async () => {
+  const forgotPassword = async (updatedUser) => {
     const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      return;
-    }
-
-    try {
-      const response = await axios.get(
-        "http://localhost:8282/user/getAllCart",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        setCartItems(response.data);
-        console.log(response.data);
-      } else {
-        console.error("Error fetching cart items:", response);
-      }
-    } catch (error) {
-      console.error("API Error while fetching cart items:", error);
-    }
-  };
-  const updateCartQuantity = async (cartId, newQuantity) => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      return;
-    }
+    if (!token) return;
 
     try {
       const response = await axios.put(
-        `http://localhost:8282/user/update-cart/${cartId}`,
-        { quantity: newQuantity },
+        "http://localhost:8282/auth/reset",
+        updatedUser,
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
-
-      if (response.status === 200) {
-        setCartItems((prevItems) =>
-          prevItems.map((item) =>
-            item.cartId === cartId ? { ...item, quantity: newQuantity } : item
-          )
-        );
-        console.log("Cart updated successfully:", response.data);
-        console.log("NewQuantity: " + newQuantity);
-      } else {
-        console.error("Error updating cart:", response);
-      }
+      console.log("Password reset successful:", response.data);
+      setUser(response.data);
     } catch (error) {
-      console.error("API Error while updating cart quantity:", error);
+      console.error(
+        "Failed to reset password:",
+        error.response?.data || error.message
+      );
     }
   };
 
-  const addToCart = async (productId, cartData) => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      return;
-    }
-
+  const addEmp = async (userData) => {
     try {
       const response = await axios.post(
-        `http://localhost:8282/user/add-cart/${productId}`,
-        cartData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        "http://localhost:8282/public/addEmp",
+        userData
       );
+      setUser(response.data.user);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to save user:", error);
+      throw error;
+    }
+  };
 
-      if (response.status === 200) {
-        setCartItems((prevItems) => [...prevItems, response.data]);
-        console.log("Product added to cart:", response.data);
+  const createAttendance = async (attendanceData, email) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8282/public/att",
+        attendanceData,
+        { params: { email } }
+      );
+      if (response.status === 201) {
+        console.log("Attendance created:", response.data);
         return response.data;
       } else {
-        console.error("Failed to add product to cart:", response);
-        return null;
+        throw new Error("Error creating attendance");
       }
-    } catch (error) {
-      console.error("API Error while adding product to cart:", error);
-      return null;
-    }
-  };
-
-  const deleteCartItem = async (cartId) => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      return;
-    }
-
-    try {
-      const response = await axios.delete(
-        `http://localhost:8282/user/delete-cart/${cartId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+    } catch (err) {
+      console.error(
+        "Failed to create attendance:",
+        err.response?.data?.message || err.message
       );
-
-      if (response.status === 200) {
-        setCartItems((prevItems) =>
-          prevItems.filter((item) => item.cartId !== cartId)
-        );
-        console.log("Cart item deleted successfully");
-      } else {
-        console.error("Error deleting cart item:", response);
-      }
-    } catch (error) {
-      console.error("API Error while deleting cart item:", error);
+      throw err;
     }
   };
 
-  const getProductId = (productId) => {
-    console.log("From context", productId);
-  };
-
-  const getOrderId = (orderId) => {
-    console.log("From context", orderId);
-  };
-
-  const createOrder = async (newProduct) => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      return;
-    }
-
+  const fetchAllEmp = async () => {
     try {
-      const response = await axios.post(
-        "http://localhost:8282/user/create-order",
-        newProduct,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await axios.get(
+        "http://localhost:8282/public/getAllEmp"
       );
-
-      if (response.data && response.status === 201) {
-        setOrder((prevOrders) => [...prevOrders, response.data]);
-        return true;
+      if (response.status === 200 && Array.isArray(response.data)) {
+        setEmp(response.data);
       } else {
-        console.error("Failed to create order:", response);
-        return false;
+        console.error("Error: API response is not an array", response);
       }
     } catch (error) {
-      console.error("Error adding product:", error);
-      return false;
+      console.error("API Error while fetching Employee:", error);
     }
   };
 
-  const getAllOrder = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      return;
-    }
-
+  const deleteEmployee = async (empId) => {
     try {
-      const response = await axios.get("http://localhost:8282/user/all-order", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 200) {
-        setOrder(response.data);
-        console.log(response.data);
-      } else {
-        console.error("Error fetching order:", response);
-      }
+      await axios.delete(`http://localhost:8282/public/deleteEmp/${empId}`);
+      toast.success("Employee deleted successfully");
+      fetchAllEmp();
     } catch (error) {
-      console.error("API Error while fetching cart items:", error);
+      toast.error("Failed to delete employee");
     }
   };
 
-  const cancelOrder = async (orderId, newStatus) => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      return;
-    }
-
-    try {
-      const response = await axios.put(
-        `http://localhost:8282/user/cancel-order/${orderId}`,
-        { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        setOrder((prevItems) =>
-          prevItems.map((item) =>
-            item.orderId === orderId ? { ...item, status: newStatus } : item
-          )
-        );
-        console.log("Cart updated successfully:", response.data);
-        console.log("NewQuantity: " + newStatus);
-      } else {
-        console.error("Error updating cart:", response);
-      }
-    } catch (error) {
-      console.error("API Error while updating cart quantity:", error);
-    }
-  };
   return (
     <AppContext.Provider
       value={{
         user,
-        authToken,
         loginUser,
         saveUser,
         logoutUser,
-        cartItems,
-        getCartItems,
-        products,
-        fetchAllProducts,
-        addToCart,
-        updateCartQuantity,
-        deleteCartItem,
-        getProductId,
-        createOrder,
-        order,
-        getAllOrder,
-        cancelOrder,
+        fetchUserProfile,
+        forgotPassword,
+        addEmp,
+        createAttendance,
+        fetchAllEmp,
+        emp,
+        deleteEmployee,
       }}
     >
       {children}

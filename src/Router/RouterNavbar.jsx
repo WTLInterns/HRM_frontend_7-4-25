@@ -1,37 +1,67 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import Navbar from "../component/Pages/Navbar";
-import Footer from "../component/Pages/Footer";
-import Home from "../component/Pages/Home";
+
 import Login from "../component/Auth/Login";
 import SignUp from "../component/Auth/SignUp";
-import ProfilePage from "../component/User/ProfilePage";
-import Cart from "../component/User/Cart";
-import Shop from "../component/Pages/Shop";
-import ViewProduct from "../component/Pages/ViewProduct";
-import Checkout from "../component/Pages/Checkout";
-import ViewOrder from "../component/Pages/ViewOrder";
-import Contact from "../component/Pages/Contact";
-import About from "../component/Pages/About";
+import Profile from "../component/Auth/Profile";
+import ResetPassword from "../component/Auth/ResetPassword";
+import Salary from "../component/Auth/Salaray";
+import EmployeeSearch from "../component/Auth/EmployeeSearch";
+import Dashboard from "../component/DashoBoard/DashBoard";
+import UserDashBoard from "../component/User/UserDashBoard";
+import { useApp } from "../context/AppContext";
+import ProtectRoute from "../component/Auth/ProtectRoute";
 
 const RouterNavbar = () => {
+  const { user, logoutUser, fetchUserProfile } = useApp();
+
   return (
     <div>
-      <Navbar />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/product/:productId" element={<ViewProduct />} />
-        <Route path="/checkout/:productId" element={<Checkout />} />
-        <Route path="/order/:orderId" element={<ViewOrder />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/about" element={<About />} />
+        <Route
+          path="/profile"
+          element={
+            <ProtectRoute>
+              <Profile />
+            </ProtectRoute>
+          }
+        />
+        <Route path="/reset" element={<ResetPassword />} />
+        <Route
+          path="/salary"
+          element={
+            <ProtectRoute>
+              <Salary />
+            </ProtectRoute>
+          }
+        />
+        <Route
+          path="/empsearch"
+          element={
+            <ProtectRoute>
+              <EmployeeSearch />
+            </ProtectRoute>
+          }
+        />
+        <Route
+          path="/dashboard/*"
+          element={
+            <ProtectRoute>
+              <Dashboard />
+            </ProtectRoute>
+          }
+        />
+        <Route
+          path="/userdashboard/*"
+          element={
+            <ProtectRoute>
+              <UserDashBoard />
+            </ProtectRoute>
+          }
+        />
       </Routes>
-      <Footer />
     </div>
   );
 };
