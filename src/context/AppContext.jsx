@@ -125,7 +125,7 @@ export const AppProvider = ({ children }) => {
         "http://localhost:8282/public/addEmp",
         userData
       );
-      setUser(response.data.user);
+      fetchAllEmp();
       return response.data;
     } catch (error) {
       console.error("Failed to save user:", error);
@@ -180,6 +180,22 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // ADD: Update Employee API – sends JSON payload to /public/update/{empId}
+  const updateEmployee = async (empId, updatedData) => {
+    try {
+      const response = await axios.put(
+        `http://localhost:8282/public/update/${empId}`,
+        updatedData,
+        { headers: { "Content-Type": "application/json" } }
+      );
+      fetchAllEmp();
+      return response.data;
+    } catch (error) {
+      console.error("Failed to update employee:", error);
+      throw error;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -194,9 +210,12 @@ export const AppProvider = ({ children }) => {
         fetchAllEmp,
         emp,
         deleteEmployee,
+        updateEmployee, // added updateEmployee here
       }}
     >
       {children}
     </AppContext.Provider>
   );
 };
+
+export default AppProvider;
