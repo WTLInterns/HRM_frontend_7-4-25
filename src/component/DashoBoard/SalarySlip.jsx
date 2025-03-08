@@ -3,17 +3,18 @@
 import { useState, useEffect } from "react"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import companyLogo from "../../assets/company.jpeg"
+import companyLogo from "../../assets/company.jpeg"     // The company logo
+import WtlSign from "../../assets/WTL Sign.jpg"         // The WTL sign
 import axios from "axios"
 
-// Helper function to format dates from "YYYY-MM-DD" to "DD-MM-YYYY"
+// Helper: format date from "YYYY-MM-DD" to "DD-MM-YYYY"
 const formatDate = (dateStr) => {
   if (!dateStr) return "N/A"
   const parts = dateStr.split("-")
   return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
-// Helper functions for converting number to words
+// Helpers for converting numbers to words
 const numberToWordsHelper = (num) => {
   const a = [
     "",
@@ -50,7 +51,6 @@ const numberToWordsHelper = (num) => {
   }
   return str.trim()
 }
-
 const numberToWords = (num) => {
   if (num == null) return ""
   const numStr = num.toString()
@@ -63,13 +63,21 @@ const numberToWords = (num) => {
   return str.trim()
 }
 
-// Salary component calculation function
+// Convert a string to Title Case
+const toTitleCase = (str) => {
+  if (!str) return str
+  return str
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ")
+}
+
+// Calculate monthly salary components from yearly CTC
 const calculateSalaryComponents = (yearlyCTC) => {
   const monthlyCTC = yearlyCTC / 12
-  // Standard salary breakdown percentages
-  const basicPercent = 0.5 // 40% of CTC
-  const hraPercent = 0.2 // 20% of CTC
-  const daPercent = 0.53 // 53% of Basic
+  const basicPercent = 0.5 // 50% of CTC
+  const hraPercent = 0.2  // 20% of CTC
+  const daPercent = 0.53  // 53% of Basic
 
   const basic = Math.round(monthlyCTC * basicPercent)
   const hra = Math.round(monthlyCTC * hraPercent)
@@ -89,29 +97,29 @@ const calculateSalaryComponents = (yearlyCTC) => {
   }
 }
 
-const SalaryReport = () => {
-  // Use employeeName (first name) as identifier
+export default function SalaryReport() {
   const [employeeName, setEmployeeName] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
-  // Yearly CTC state (fetched from backend via find API)
   const [yearlyCTC, setYearlyCTC] = useState(0)
   const [salaryReport, setSalaryReport] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [s, setS] = useState(null)
 
-  const black = [0, 0, 0]
-  const white = [255, 255, 255]
+  // Colors
   const faintGreen = [220, 230, 195]
+  const white = [255, 255, 255]
+  const black = [0, 0, 0]
 
-  // NEW useEffect: auto-fetch employee info when employeeName changes
+  // Auto-fetch employee info when employeeName changes
   useEffect(() => {
     if (employeeName.trim() !== "") {
       const fetchEmployeeInfo = async () => {
         try {
           const response = await axios.get(`http://localhost:8282/public/find/${employeeName}`)
-          // Assuming the yearly CTC is in the "salary" field of the employee object
           setYearlyCTC(response.data.salary)
+          setS(response.data)
         } catch (error) {
           console.error("Error fetching employee info", error)
         }
@@ -124,7 +132,6 @@ const SalaryReport = () => {
     setLoading(true)
     setError(null)
     try {
-      // Call the backend endpoint using employeeName as a query parameter.
       const response = await fetch(
         `http://localhost:8282/public/generateReport?employeeName=${employeeName}&startDate=${startDate}&endDate=${endDate}`
       )
@@ -144,10 +151,12 @@ const SalaryReport = () => {
     try {
       const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.width
+      const pageHeight = doc.internal.pageSize.height
       const margin = 15
       const contentWidth = pageWidth - 2 * margin
       let yPos = margin
 
+      // Helper: create a cell with borders
       const createCell = (
         x,
         y,
@@ -155,7 +164,7 @@ const SalaryReport = () => {
         height,
         text = "",
         fontSize = 10,
-        align = "center",
+        align = "left",
         bold = false,
         fillColor = white
       ) => {
@@ -164,6 +173,7 @@ const SalaryReport = () => {
         doc.setDrawColor(...black)
         doc.setLineWidth(0.1)
         doc.rect(x, y, width, height, "S")
+
         doc.setFontSize(fontSize)
         doc.setFont("helvetica", bold ? "bold" : "normal")
         if (text) {
@@ -174,193 +184,412 @@ const SalaryReport = () => {
         }
       }
 
-      const roundVal = (val) => (val ? Math.round(val) : 0)
+      // Outer container start
+      const slipStartY = yPos
 
-      // 1) HEADER
-      createCell(margin, yPos, contentWidth, 14, "WTL PVT LTD", 20, "center", true, faintGreen)
-      yPos += 14
-      createCell(margin, yPos, contentWidth, 10, "Company Address :- a wing 1st floor city vista office no-016 kharadi pune", 12, "center", true, faintGreen)
-      yPos += 10
-      createCell(margin, yPos, contentWidth, 10, `PAY SLIP FOR ${formatDate(startDate)} to ${formatDate(endDate)}`, 14, "center", true, faintGreen)
+      // 1) HEADER with green background
+      const headerBoxHeight = 14
+      doc.setFillColor(...faintGreen)
+      doc.rect(margin, yPos, contentWidth, headerBoxHeight, "F")
+      doc.setDrawColor(...black)
+      doc.setLineWidth(0.1)
+      doc.rect(margin, yPos, contentWidth, headerBoxHeight, "S")
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(20)
+      doc.setFont("helvetica", "bold")
+      const companyText = "WTL TOURISM PVT. LTD."
+      doc.textWithLink(
+        companyText,
+        margin + (contentWidth / 2),
+        yPos + headerBoxHeight / 2,
+        {
+          url: "https://worldtriplink.com/",
+          align: "center",
+        }
+      )
+      yPos += headerBoxHeight
+
+      // 2) Company address row
+      createCell(
+        margin,
+        yPos,
+        contentWidth,
+        12,
+        "Company Address :- A Wing 1st Floor City Vista Office no-016 kharadi Pune-411014",
+        12,
+        "center",
+        true,
+        faintGreen
+      )
       yPos += 12
 
-      // 2) EMPLOYEE INFORMATION HEADER
+      // Example: "PAY SLIP FOR MARCH-2025"
+      const paySlipMonth = startDate
+        ? new Date(startDate).toLocaleString("en-US", { month: "long", year: "numeric" }).toUpperCase()
+        : "MARCH-2025"
+
+      createCell(
+        margin,
+        yPos,
+        contentWidth,
+        10,
+        `PAY SLIP FOR ${paySlipMonth}`,
+        14,
+        "center",
+        true,
+        faintGreen
+      )
+      yPos += 12
+
+      // 3) EMPLOYEE INFORMATION
+      const employeeInfoBoxY = yPos
       createCell(margin, yPos, contentWidth, 10, "Employee Information", 13, "center", true, faintGreen)
       yPos += 10
+
       const col1 = contentWidth * 0.15
       const col2 = contentWidth * 0.35
       const col3 = contentWidth * 0.15
       const col4 = contentWidth * 0.35
 
       // Row 1: UID & Designation
-      createCell(margin, yPos, col1, 10, "UID:", 10, "left", true, white)
-      createCell(margin + col1, yPos, col2, 10, salaryReport?.uid || "N/A", 10, "left", false, white)
-      createCell(margin + col1 + col2, yPos, col3, 10, "Designation:", 10, "left", true, white)
-      createCell(margin + col1 + col2 + col3, yPos, col4, 10, salaryReport?.jobRole || "N/A", 10, "left", false, white)
+      createCell(margin, yPos, col1, 10, "UID:", 10, "left", true)
+      createCell(margin + col1, yPos, col2, 10, salaryReport?.uid || "N/A", 10, "left")
+      createCell(margin + col1 + col2, yPos, col3, 10, "Designation:", 10, "left", true)
+      createCell(
+        margin + col1 + col2 + col3,
+        yPos,
+        col4,
+        10,
+        salaryReport?.jobRole ? toTitleCase(salaryReport.jobRole) : "N/A",
+        10,
+        "left"
+      )
       yPos += 10
 
       // Row 2: Name & Department
-      createCell(margin, yPos, col1, 10, "Name:", 10, "left", true, white)
-      createCell(margin + col1, yPos, col2, 10, `${salaryReport?.firstName || ""} ${salaryReport?.lastName || ""}`, 10, "left", false, white)
-      createCell(margin + col1 + col2, yPos, col3, 10, "Department:", 10, "left", true, white)
-      createCell(margin + col1 + col2 + col3, yPos, col4, 10, salaryReport?.department || "N/A", 10, "left", false, white)
+      createCell(margin, yPos, col1, 10, "Name:", 10, "left", true)
+      createCell(
+        margin + col1,
+        yPos,
+        col2,
+        10,
+        `${salaryReport?.firstName ? toTitleCase(salaryReport.firstName) : ""} ${salaryReport?.lastName ? toTitleCase(salaryReport.lastName) : ""}`,
+        10,
+        "left"
+      )
+      createCell(margin + col1 + col2, yPos, col3, 10, "Department:", 10, "left", true)
+      createCell(
+        margin + col1 + col2 + col3,
+        yPos,
+        col4,
+        10,
+        salaryReport?.department || "N/A",
+        10,
+        "left"
+      )
       yPos += 10
 
-      // 3) SPLIT SECTION HEADERS
-      const halfWidth = contentWidth / 2
-      createCell(margin, yPos, halfWidth, 10, "Employee Attendance", 11, "center", true, faintGreen)
-      createCell(margin + halfWidth, yPos, halfWidth, 10, "Salary Transferred To", 11, "center", true, faintGreen)
-      yPos += 10
+      // Outline for Employee Info
+      const employeeInfoBoxHeight = yPos - employeeInfoBoxY
+      doc.rect(margin, employeeInfoBoxY, contentWidth, employeeInfoBoxHeight, "S")
 
       // 4) EMPLOYEE ATTENDANCE & BANK DETAILS
-      const attendanceCol1 = halfWidth * 0.35
-      const attendanceCol2 = halfWidth * 0.15
-      const attendanceCol3 = halfWidth * 0.5
-      const bankCol1 = halfWidth * 0.4
-      const bankCol2 = halfWidth * 0.6
+      const rowHeight = 10
+      const colWidth = contentWidth / 4
 
-      // Row 1: Working Days / Bank Name
-      createCell(margin, yPos, attendanceCol1, 10, "Working Days:", 10, "left", true, white)
-      createCell(margin + attendanceCol1, yPos, attendanceCol2, 10, String(salaryReport?.workingDays ?? 0), 10, "center", false, white)
-      createCell(margin + attendanceCol1 + attendanceCol2, yPos, attendanceCol3, 10, "", 10, "center", false, white)
-      createCell(margin + halfWidth, yPos, bankCol1, 10, "Bank Name:", 10, "left", true, white)
-      createCell(margin + halfWidth + bankCol1, yPos, bankCol2, 10, salaryReport?.bankName || "N/A", 10, "left", false, white)
-      yPos += 10
+      // Header row
+      createCell(
+        margin,
+        yPos,
+        colWidth * 2,
+        rowHeight,
+        "Employee Attendance",
+        11,
+        "center",
+        true,
+        faintGreen
+      )
+      createCell(
+        margin + colWidth * 2,
+        yPos,
+        colWidth * 2,
+        rowHeight,
+        "Bank Details",
+        11,
+        "center",
+        true,
+        faintGreen
+      )
+      yPos += rowHeight
 
-      // Row 2: Leave Allowed / Payable Days / Account No
-      const payableDaysLabelWidth = attendanceCol3 * 0.7
-      const payableDaysValueWidth = attendanceCol3 * 0.3
-      createCell(margin, yPos, attendanceCol1, 10, "Leave Allowed:", 10, "left", true, white)
-      createCell(margin + attendanceCol1, yPos, attendanceCol2, 10, String(salaryReport?.leaveAllowed ?? 0), 10, "center", false, white)
-      createCell(margin + attendanceCol1 + attendanceCol2, yPos, payableDaysLabelWidth, 10, "Payable Days:", 10, "left", true, white)
-      createCell(margin + attendanceCol1 + attendanceCol2 + payableDaysLabelWidth, yPos, payableDaysValueWidth, 10, String(salaryReport?.payableDays ?? 0), 10, "center", false, white)
-      createCell(margin + halfWidth, yPos, bankCol1, 10, "Account No:", 10, "left", true, white)
-      createCell(margin + halfWidth + bankCol1, yPos, bankCol2, 10, salaryReport?.bankAccountNo || "N/A", 10, "left", false, white)
-      yPos += 10
+      // Row 1
+      createCell(margin, yPos, colWidth, rowHeight, "Working Days:", 10, "left", true)
+      createCell(
+        margin + colWidth,
+        yPos,
+        colWidth,
+        rowHeight,
+        String(salaryReport?.workingDays ?? 0),
+        10,
+        "left"
+      )
+      createCell(
+        margin + colWidth * 2,
+        yPos,
+        colWidth,
+        rowHeight,
+        "Bank Name:",
+        10,
+        "left",
+        true
+      )
+      createCell(
+        margin + colWidth * 3,
+        yPos,
+        colWidth,
+        rowHeight,
+        salaryReport?.bankName ? toTitleCase(salaryReport.bankName) : "N/A",
+        10,
+        "left"
+      )
+      yPos += rowHeight
 
-      // Row 3: Leave Taken / Branch Name
-      createCell(margin, yPos, attendanceCol1, 10, "Leave Taken:", 10, "left", true, white)
-      createCell(margin + attendanceCol1, yPos, attendanceCol2, 10, String(salaryReport?.leaveTaken ?? 0), 10, "center", false, white)
-      createCell(margin + attendanceCol1 + attendanceCol2, yPos, attendanceCol3, 10, "", 10, "center", false, white)
-      createCell(margin + halfWidth, yPos, bankCol1, 10, "Branch Name:", 10, "left", true, white)
-      createCell(margin + halfWidth + bankCol1, yPos, bankCol2, 10, salaryReport?.branchName || "N/A", 10, "left", false, white)
-      yPos += 10
+      // Row 2
+      createCell(margin, yPos, colWidth, rowHeight, "Leave Taken:", 10, "left", true)
+      createCell(
+        margin + colWidth,
+        yPos,
+        colWidth,
+        rowHeight,
+        String(salaryReport?.leaveTaken ?? 0),
+        10,
+        "left"
+      )
+      createCell(
+        margin + colWidth * 2,
+        yPos,
+        colWidth,
+        rowHeight,
+        "IFSC Code:",
+        10,
+        "left",
+        true
+      )
+      createCell(
+        margin + colWidth * 3,
+        yPos,
+        colWidth,
+        rowHeight,
+        s?.bankIfscCode || "N/A",
+        10,
+        "left"
+      )
+      yPos += rowHeight
 
-      // 5) SALARY CALCULATIONS HEADER
+      // Row 3
+      createCell(margin, yPos, colWidth, rowHeight, "Payable Days:", 10, "left", true)
+      createCell(
+        margin + colWidth,
+        yPos,
+        colWidth,
+        rowHeight,
+        String(salaryReport?.payableDays ?? 0),
+        10,
+        "left"
+      )
+      createCell(
+        margin + colWidth * 2,
+        yPos,
+        colWidth,
+        rowHeight,
+        "Branch Name:",
+        10,
+        "left",
+        true
+      )
+      createCell(
+        margin + colWidth * 3,
+        yPos,
+        colWidth,
+        rowHeight,
+        salaryReport?.branchName ? toTitleCase(salaryReport.branchName) : "N/A",
+        10,
+        "left"
+      )
+      yPos += rowHeight
+
+      // Row 4
+      createCell(margin, yPos, colWidth, rowHeight, "", 10, "left")
+      createCell(margin + colWidth, yPos, colWidth, rowHeight, "", 10, "left")
+      createCell(
+        margin + colWidth * 2,
+        yPos,
+        colWidth,
+        rowHeight,
+        "Account No:",
+        10,
+        "left",
+        true
+      )
+      createCell(
+        margin + colWidth * 3,
+        yPos,
+        colWidth,
+        rowHeight,
+        salaryReport?.bankAccountNo || "N/A",
+        10,
+        "left"
+      )
+      yPos += rowHeight
+
+      // 5) SALARY CALCULATIONS
+      const salaryCalcBoxY = yPos
       createCell(margin, yPos, contentWidth, 10, "Salary Calculations", 11, "center", true, faintGreen)
       yPos += 10
 
-      // 6) SALARY CALCULATIONS GRID
       const salaryCol1 = contentWidth * 0.4
       const salaryCol2 = contentWidth * 0.2
       const salaryCol3 = contentWidth * 0.2
       const salaryCol4 = contentWidth * 0.2
 
-      // Use the dynamic yearlyCTC value fetched from backend
       const ctcVal = yearlyCTC
+      const { basic, hra, da, special, totalAllowance, grossSalary, monthlyCTC } =
+        calculateSalaryComponents(ctcVal)
 
-      // Calculate salary components dynamically
-      const salaryComponents = calculateSalaryComponents(ctcVal)
-      const monthlyCtcVal = salaryComponents.monthlyCTC
       const workingDays = salaryReport?.workingDays || 30
-      const perDaySalary = monthlyCtcVal / workingDays
-      const totalLeaves = workingDays - (salaryReport?.payableDays || 0)
+      const perDaySalary = monthlyCTC / workingDays
+      const totalLeaves = workingDays - (salaryReport?.payableDays ?? 0)
       const deductionVal = Math.round(perDaySalary * totalLeaves)
-      const professionalTaxVal = roundVal(salaryReport?.professionalTax || 0)
-      const tdsVal = roundVal(salaryReport?.tds || 0)
+      const professionalTaxVal = salaryReport?.professionalTax ? Math.round(salaryReport.professionalTax) : 0
+      const tdsVal = salaryReport?.tds ? Math.round(salaryReport.tds) : 0
       const totalDeductions = deductionVal + professionalTaxVal + tdsVal
+      const computedNetPayable = grossSalary - totalDeductions
+      const netPayInteger = Math.max(0, computedNetPayable)
 
-      const basicVal = salaryComponents.basic
-      const hraVal = salaryComponents.hra
-      const daVal = salaryComponents.da
-      const specialVal = salaryComponents.special
-      const totalAllowanceVal = salaryComponents.totalAllowance
-      const grossSalaryVal = salaryComponents.grossSalary
-      const computedNetPayable = grossSalaryVal - totalDeductions
-      const netPayInteger = Math.max(0, roundVal(computedNetPayable))
-
-      // Row: Cost To Company - CTC & Deductions
-      createCell(margin, yPos, salaryCol1, 10, "Cost To Company - CTC", 10, "left", true, white)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${ctcVal}`, 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Deductions", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${deductionVal}`, 10, "right", false, white)
+      // Cost To Company & Deductions
+      createCell(margin, yPos, salaryCol1, 10, "Cost To Company - CTC", 10, "left", true)
+      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${ctcVal}`, 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Deductions", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${deductionVal}`, 10, "right")
       yPos += 10
 
-      // Row: Basic & Professional Tax
-      createCell(margin, yPos, salaryCol1, 10, "Basic", 10, "left", true, white)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${basicVal}`, 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Professional Tax", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${professionalTaxVal}`, 10, "right", false, white)
+      // Basic & Professional Tax
+      createCell(margin, yPos, salaryCol1, 10, "Basic", 10, "left", true)
+      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${basic}`, 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Professional Tax", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${professionalTaxVal}`, 10, "right")
       yPos += 10
 
-      // Row: House Rent Allowance & TDS
-      createCell(margin, yPos, salaryCol1, 10, "House Rent Allowance", 10, "left", true, white)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${hraVal}`, 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "TDS", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${tdsVal}`, 10, "right", false, white)
+      // House Rent Allowance & TDS
+      createCell(margin, yPos, salaryCol1, 10, "House Rent Allowance", 10, "left", true)
+      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${hra}`, 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "TDS", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${tdsVal}`, 10, "right")
       yPos += 10
 
-      // Row: DA Allowance & blank
-      createCell(margin, yPos, salaryCol1, 10, "DA Allowance (53% of Basic)", 10, "left", true, white)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${daVal}`, 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, "", 10, "right", false, white)
+      // DA & blank
+      createCell(margin, yPos, salaryCol1, 10, "DA Allowance (53% of Basic)", 10, "left", true)
+      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${da}`, 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, "", 10, "right")
       yPos += 10
 
-      // Row: Special Allowance & Total Deductions
-      createCell(margin, yPos, salaryCol1, 10, "Special Allowance", 10, "left", true, white)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${specialVal}`, 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Total Deductions", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${totalDeductions}`, 10, "right", false, white)
+      // Special & Total Deductions
+      createCell(margin, yPos, salaryCol1, 10, "Special Allowance", 10, "left", true)
+      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${special}`, 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Total Deductions", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${totalDeductions}`, 10, "right")
       yPos += 10
 
-      // Row: Total Allowance & Additional Perks
-      createCell(margin, yPos, salaryCol1, 10, "Total Allowance", 10, "right", true, white)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${totalAllowanceVal}`, 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Additional Perks", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, salaryReport?.additionalPerks || "N/A", 10, "right", false, white)
+      // Total Allowance & Additional Perks
+      createCell(margin, yPos, salaryCol1, 10, "Total Allowance", 10, "right", true)
+      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${totalAllowance}`, 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Additional Perks", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, salaryReport?.additionalPerks || "N/A", 10, "right")
       yPos += 10
 
-      // Row: Gross Salary & Bonus
-      createCell(margin, yPos, salaryCol1, 10, "Gross Salary", 10, "right", true, white)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${grossSalaryVal}`, 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Bonus", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${Math.round(salaryReport?.bonus || 0)}`, 10, "right", false, white)
+      // Gross Salary & Bonus
+      createCell(margin, yPos, salaryCol1, 10, "Gross Salary", 10, "right", true)
+      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${grossSalary}`, 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Bonus", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${salaryReport?.bonus ? Math.round(salaryReport.bonus) : 0}`, 10, "right")
       yPos += 10
 
-      // Row: Net Payable Salary
-      createCell(margin, yPos, salaryCol1 + salaryCol2, 10, "", 10, "left", false, white)
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Net Payable Salary", 10, "left", true, white)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${netPayInteger}`, 10, "right", false, white)
+      // Net Payable
+      createCell(margin, yPos, salaryCol1 + salaryCol2, 10, "", 10, "left")
+      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Net Payable Salary", 10, "left", true)
+      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${netPayInteger}`, 10, "right")
       yPos += 10
 
-      // Row: Amount in Words
+      // Amount in Words
       const amountWords = numberToWords(netPayInteger) + " Rupees Only"
-      createCell(margin, yPos, contentWidth * 0.3, 10, "Amount in Words:", 10, "left", true, white)
-      createCell(margin + contentWidth * 0.3, yPos, contentWidth * 0.7, 10, amountWords, 10, "center", false, white)
+      createCell(margin, yPos, contentWidth * 0.3, 10, "Amount in Words:", 10, "left", true)
+      createCell(margin + contentWidth * 0.3, yPos, contentWidth * 0.7, 10, amountWords, 10, "center")
       yPos += 10
-      createCell(margin, yPos, contentWidth, 10, "", 10, "left", false, white)
+      createCell(margin, yPos, contentWidth, 10, "", 10, "left")
       yPos += 10
 
-      // Signature Section
-      const signatureWidth = contentWidth / 3
-      createCell(margin, yPos, signatureWidth, 10, "Prepared By:", 10, "left", true, white)
-      createCell(margin + signatureWidth, yPos, signatureWidth, 10, "Approved By:", 10, "left", true, white)
-      createCell(margin + 2 * signatureWidth, yPos, signatureWidth, 10, "", 10, "left", false, white)
-      yPos += 10
-      createCell(margin, yPos, signatureWidth, 20, "", 10, "left", false, white)
-      createCell(margin + signatureWidth, yPos, signatureWidth, 20, "", 10, "left", false, white)
-      createCell(margin + 2 * signatureWidth, yPos, signatureWidth, 20, "", 10, "left", false, white)
-      yPos += 20
+      const salaryCalcBoxHeight = yPos - salaryCalcBoxY
+      doc.rect(margin, salaryCalcBoxY, contentWidth, salaryCalcBoxHeight, "S")
 
-      if (companyLogo) {
-        try {
-          doc.addImage(companyLogo, "JPEG", margin + signatureWidth + 20, yPos - 18, 30, 16)
-        } catch (error) {
-          console.error("Error adding company stamp:", error)
-        }
+      // ===================
+      // SIGNATURE SECTION
+      // ===================
+      // 2 columns: left = Prepared By + WTL sign, right = Approved By + company logo + bigger WTL sign below.
+      const sigColumnWidth = contentWidth / 2
+      const signatureStartY = yPos
+
+      // Row 1 (text)
+      createCell(margin, signatureStartY, sigColumnWidth, 10, "Prepared By:", 10, "left", true)
+      createCell(margin + sigColumnWidth, signatureStartY, sigColumnWidth, 10, "Approved By:", 10, "left", true)
+      yPos += 10
+
+      // Row 2 (images)
+      const signatureRowHeight = 40  // Decreased row height
+      createCell(margin, yPos, sigColumnWidth, signatureRowHeight, "", 10, "left")
+      createCell(margin + sigColumnWidth, yPos, sigColumnWidth, signatureRowHeight, "", 10, "left")
+
+      // Left column: WTL sign (smaller image)
+      try {
+        doc.addImage(
+          WtlSign,
+          "JPEG",
+          margin + 10,   // x
+          yPos + 5,      // y offset
+          50,            // width (decreased)
+          35             // height (decreased)
+        )
+      } catch (error) {
+        console.error("Error adding WTL sign on left:", error)
       }
 
+      // Right column: first the company logo, then a smaller WTL sign below it
+      try {
+        // Company logo near top
+        doc.addImage(
+          companyLogo,
+          "JPEG",
+          margin + sigColumnWidth + 10,
+          yPos + 5,
+          50, // smaller width
+          35  // smaller height
+        )
+      } catch (error) {
+        console.error("Error adding images on right column:", error)
+      }
+
+      yPos += signatureRowHeight
+
+      // ADD THE HORIZONTAL LINE AFTER IMAGES
+      doc.setLineWidth(0.1)
+      doc.setDrawColor(0, 0, 0)
+      doc.line(margin, yPos, margin + contentWidth, yPos) // from left margin to right margin
+
+      // Outline entire slip (optional)
+      const totalSlipHeight = yPos - slipStartY
+      doc.rect(margin, slipStartY, contentWidth, totalSlipHeight, "S")
+
+      // Finally, save PDF
       doc.save(`WTL_salary_slip_${employeeName || "DEC2024"}.pdf`)
     } catch (error) {
       console.error("Error generating PDF:", error)
@@ -445,5 +674,3 @@ const SalaryReport = () => {
     </div>
   )
 }
-
-export default SalaryReport
