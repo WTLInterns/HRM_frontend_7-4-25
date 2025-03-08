@@ -228,10 +228,24 @@ export default function AddEmp() {
 const handleReset = async (e) => {
   e.preventDefault();
 setFname(""),
-setLname("")
-  
-
-
+setLname(""),
+setPhone(""),
+setaadharNo(""),
+setaddress(""),
+ setbankAccountNo(""),
+ setbankIfscCode(""),
+ setbankName(""), 
+setbirthDate(""),
+seteducation(""),
+setbloodGroup(""),
+setbranchName(""),
+setgender(""),
+setjobRole(""),
+setjoiningDate(""),
+setpanCard(""),
+setsalary(""),
+setstatus(""),
+setEmail("")
 }
 
 
