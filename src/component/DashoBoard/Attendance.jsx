@@ -9,10 +9,9 @@ export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [error, setError] = useState(null);
 
-  // We'll use filteredRecords to store search results.
   const [filteredRecords, setFilteredRecords] = useState([]);
-
-  // Search box input
+  const [currentPage, setCurrentPage] = useState(1); // For pagination
+  const recordsPerPage = 5; // Number of records per page
   const [searchQuery, setSearchQuery] = useState("");
 
   // Define color classes for each status
@@ -30,8 +29,6 @@ export default function Attendance() {
   // -----------------------------------
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // Prepare the payload
     const newRecord = {
       employee: { firstName: employeeName },
       date: selectedDate.toISOString().split("T")[0],
@@ -51,11 +48,9 @@ export default function Attendance() {
       })
       .then((data) => {
         alert("Attendance marked successfully!");
-        // Reset the form
         setEmployeeName("");
         setStatus("Present");
         setSelectedDate(new Date());
-        // Clear search results or re-fetch if desired
         setFilteredRecords([]);
       })
       .catch((error) => {
@@ -82,7 +77,6 @@ export default function Attendance() {
         return response.json();
       })
       .then((data) => {
-        console.log("Search results:", data);
         setFilteredRecords(data);
       })
       .catch((error) => {
@@ -117,7 +111,6 @@ export default function Attendance() {
         return response.json();
       })
       .then((updatedRecord) => {
-        // Update local state so UI reflects the new status
         setFilteredRecords((prev) =>
           prev.map((rec) =>
             rec.id === recordId ? { ...rec, status: updatedRecord.status } : rec
@@ -131,27 +124,48 @@ export default function Attendance() {
   };
 
   // -----------------------------------
-  // 6) Rendering the Component
+  // 6) Pagination Logic
+  // -----------------------------------
+  const paginate = (records, currentPage, recordsPerPage) => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    return records.slice(startIndex, endIndex);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage * recordsPerPage < filteredRecords.length) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // -----------------------------------
+  // 7) Rendering the Component
   // -----------------------------------
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6 bg-gray-50">
       {error && (
         <div className="bg-red-500 text-white p-3 mb-4 rounded">{error}</div>
       )}
 
       {/* Mark Attendance Form */}
-      <div className="w-full p-4 border rounded mb-8">
-        <h2 className="text-2xl font-bold mb-4">Mark Attendance</h2>
-        <form onSubmit={handleSubmit} className="mb-6 space-y-4">
+      <div className="w-full max-w-md mx-auto p-4 bg-gray-100 shadow-md rounded-lg mb-8">
+        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Mark Attendance</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Employee Name */}
-          <div>
-            <label htmlFor="employeeName" className="block font-medium text-gray-700">
+          <div className="space-y-2">
+            <label htmlFor="employeeName" className="block text-sm font-medium text-gray-700">
               Employee Name
             </label>
             <input
               type="text"
               id="employeeName"
-              className="mt-1 block w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-300 rounded-lg text-sm"
               value={employeeName}
               onChange={(e) => setEmployeeName(e.target.value)}
               required
@@ -161,25 +175,25 @@ export default function Attendance() {
           {/* Date */}
           <div className="space-y-2">
             <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-              Date:
+              Date
             </label>
             <input
               id="date"
               type="date"
-              className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 border border-gray-300 rounded-lg text-sm"
               value={selectedDate.toISOString().split("T")[0]}
               onChange={(e) => setSelectedDate(new Date(e.target.value))}
             />
           </div>
 
           {/* Status */}
-          <div>
-            <label htmlFor="status" className="block font-medium text-gray-700">
+          <div className="space-y-2">
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
               Status
             </label>
             <select
               id="status"
-              className="mt-1 block w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-300 rounded-lg text-sm"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
@@ -192,82 +206,105 @@ export default function Attendance() {
             </select>
           </div>
 
-          <button type="submit" className="bg-blue-500 text-white py-2 px-4 rounded-md">
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition text-sm"
+          >
             Submit Attendance
           </button>
         </form>
       </div>
 
       {/* Attendance Records */}
-      <div className="w-full p-4 border rounded">
-        <h2 className="text-2xl font-bold mb-4">Attendance Records</h2>
-        {/* Search */}
-        <div className="mb-4 flex items-center">
+      <div className="w-full p-6 bg-gray-100 shadow-md rounded-lg">
+        <h2 className="text-3xl font-semibold mb-6 text-gray-800">Attendance Records</h2>
+
+        {/* Search Box */}
+        <div className="mb-4 flex items-center space-x-4">
           <input
             type="text"
-            className="p-2 border rounded w-full"
+            className="p-2 border border-gray-300 rounded-lg w-full text-sm"
             placeholder="Search by employee name"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <button
             onClick={handleShowDetails}
-            className="ml-2 bg-blue-500 text-white py-2 px-4 rounded-md"
+            className="py-2 px-4 bg-blue-600 text-white rounded-lg text-sm"
           >
             Show Details
           </button>
           {(filteredRecords.length > 0 || searchQuery) && (
             <button
               onClick={handleReset}
-              className="ml-2 bg-gray-500 text-white py-2 px-4 rounded-md"
+              className="py-2 px-4 bg-gray-600 text-white rounded-lg text-sm"
             >
               Reset
             </button>
           )}
         </div>
 
+        {/* Attendance Records Table */}
         {filteredRecords.length > 0 ? (
-          <table className="w-full table-auto border-collapse border border-gray-300">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border p-2">Employee Name</th>
-                <th className="border p-2">Date</th>
-                <th className="border p-2">Status</th>
-                <th className="border p-2">Change Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.map((record) => (
-                <tr key={record.id}>
-                  {/* Show the firstName or "N/A" if missing */}
-                  <td className="border p-2">{record.employee?.firstName || "N/A"}</td>
-                  <td className="border p-2">{record.date}</td>
-                  <td className={`border p-2 ${statusColors[record.status] || ""}`}>
-                    {record.status}
-                  </td>
-                  <td className="border p-2">
-                    {/* Dropdown to update status dynamically */}
-                    <select
-                      value={record.status}
-                      onChange={(e) =>
-                        updateStatus(record.employee?.empId, record.date, record.id, e.target.value)
-                      }
-                      className="border p-2 rounded"
-                    >
-                      <option value="Present">Present</option>
-                      <option value="Absent">Absent</option>
-                      <option value="Half-Day">Half-Day</option>
-                      <option value="Paid Leave">Paid Leave</option>
-                      <option value="Week Off">Week Off</option>
-                      <option value="Holiday">Holiday</option>
-                    </select>
-                  </td>
+          <>
+            <table className="w-full table-auto border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-200 text-lg">
+                  <th className="border p-4">Sr. No</th>
+                  <th className="border p-4">Employee Name</th>
+                  <th className="border p-4">Date</th>
+                  <th className="border p-4">Status</th>
+                  <th className="border p-4">Change Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginate(filteredRecords, currentPage, recordsPerPage).map((record, index) => (
+                  <tr key={record.id || index} className="hover:bg-gray-100">
+                    <td className="border p-4">{(currentPage - 1) * recordsPerPage + index + 1}</td>
+                    <td className="border p-4">{record.employee?.firstName || "N/A"}</td>
+                    <td className="border p-4">{record.date}</td>
+                    <td className={`border p-4 ${statusColors[record.status] || ""}`}>
+                      {record.status}
+                    </td>
+                    <td className="border p-4">
+                      <select
+                        value={record.status}
+                        onChange={(e) =>
+                          updateStatus(record.employee?.empId, record.date, record.id, e.target.value)
+                        }
+                        className="border p-2 rounded-lg text-sm"
+                      >
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Half-Day">Half-Day</option>
+                        <option value="Paid Leave">Paid Leave</option>
+                        <option value="Week Off">Week Off</option>
+                        <option value="Holiday">Holiday</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            <div className="mt-4 flex justify-between">
+              <button
+                onClick={handlePrevPage}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm"
+              >
+                Previous
+              </button>
+              <button
+                onClick={handleNextPage}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm"
+              >
+                Next
+              </button>
+            </div>
+          </>
         ) : (
-          <div className="text-center p-4">
+          <div className="text-center p-6 text-lg text-gray-500">
             No attendance records to display. Please use the search above.
           </div>
         )}
@@ -275,3 +312,4 @@ export default function Attendance() {
     </div>
   );
 }
+

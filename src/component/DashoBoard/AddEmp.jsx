@@ -38,14 +38,34 @@ export default function AddEmp() {
   // Selected employee for update
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  // Pagination state
+  // Search and Pagination state
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const employeesPerPage = 5;
-  const totalPages = Math.ceil(emp.length / employeesPerPage);
+  const totalPages = Math.ceil(
+    emp.filter(
+      (employee) =>
+        employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.email.toLowerCase().includes(searchTerm.toLowerCase())
+    ).length / employeesPerPage
+  );
 
   useEffect(() => {
     fetchAllEmp();
   }, [addEmp, updateEmployee]);
+
+  // Filter employees based on search term
+  const filteredEmployees = emp.filter(
+    (employee) =>
+      employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const currentEmployees = filteredEmployees.slice(
+    (currentPage - 1) * employeesPerPage,
+    currentPage * employeesPerPage
+  );
 
   const handleModalToggle = () => {
     setModal(!modal);
@@ -59,14 +79,8 @@ export default function AddEmp() {
     }
   };
 
-  const currentEmployees = emp.slice(
-    (currentPage - 1) * employeesPerPage,
-    currentPage * employeesPerPage
-  );
-
   // Validation function for all fields
   const validateFields = () => {
-    // Check if any field is empty
     if (
       !firstName ||
       !lastName ||
@@ -91,39 +105,25 @@ export default function AddEmp() {
       toast.error("All fields are required");
       return false;
     }
-    // Email validation
     if (!/\S+@\S+\.\S+/.test(email)) {
       toast.error("Please enter a valid email address");
       return false;
     }
-    // Phone validation (assuming 10 digits)
     if (!/^[0-9]{10}$/.test(phone)) {
       toast.error("Please enter a valid 10-digit phone number");
       return false;
     }
-    // Aadhar validation (assuming 12 digits)
-    if (!/^[0-9]{12}$/.test(aadharNo)) {
-      toast.error("Please enter a valid 12-digit Aadhar number");
+    // Aadhaar validation in the format: "1234 4567 7890"
+    if (!/^\d{4}\s\d{4}\s\d{4}$/.test(aadharNo)) {
+      toast.error("Please enter a valid Aadhaar number in the format: 1234 4567 7890");
       return false;
     }
-    // PAN Card validation (5 letters, 4 digits, 1 letter)
-    if (!/^[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}$/.test(panCard)) {
-      toast.error("Please enter a valid PAN card number");
-      return false;
-    }
-    // Salary validation (should be a positive number)
     if (isNaN(salary) || Number(salary) <= 0) {
       toast.error("Please enter a valid salary amount");
       return false;
     }
-    // Bank name validation (alphabets and spaces only)
     if (!/^[A-Za-z\s]+$/.test(bankName)) {
       toast.error("Please enter a valid bank name (alphabets and spaces only)");
-      return false;
-    }
-    // IFSC Code validation: format - 4 letters, 0, 6 alphanumeric characters (e.g., ABCD0EF1234)
-    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfscCode)) {
-      toast.error("Please enter a valid IFSC code (e.g., ABCD0EF1234)");
       return false;
     }
     return true;
@@ -132,11 +132,7 @@ export default function AddEmp() {
   // Add Employee submission
   const handleAddEmp = async (e) => {
     e.preventDefault();
-
-    if (!validateFields()) {
-      return;
-    }
-
+    if (!validateFields()) return;
     try {
       const userData = {
         firstName,
@@ -162,26 +158,7 @@ export default function AddEmp() {
       await addEmp(userData);
       toast.success("Registered Successfully");
       setModal(false);
-      // Clear fields
-      setFname("");
-      setLname("");
-      setEmail("");
-      setPhone("");
-      setaadharNo("");
-      setpanCard("");
-      seteducation("");
-      setbloodGroup("");
-      setjobRole("");
-      setgender("");
-      setaddress("");
-      setbirthDate("");
-      setjoiningDate("");
-      setstatus("");
-      setbankName("");
-      setbankAccountNo("");
-      setbankIfscCode("");
-      setbranchName("");
-      setsalary("");
+      handleReset(e);
     } catch (err) {
       toast.error("Failed to register user");
     }
@@ -223,43 +200,34 @@ export default function AddEmp() {
     setUpdateModal(true);
   };
 
+  // Reset function to clear all form fields
+  const handleReset = async (e) => {
+    e.preventDefault();
+    setFname("");
+    setLname("");
+    setEmail("");
+    setPhone("");
+    setaadharNo("");
+    setpanCard("");
+    seteducation("");
+    setbloodGroup("");
+    setjobRole("");
+    setgender("");
+    setaddress("");
+    setbirthDate("");
+    setjoiningDate("");
+    setstatus("");
+    setbankName("");
+    setbankAccountNo("");
+    setbankIfscCode("");
+    setbranchName("");
+    setsalary("");
+  };
 
-
-const handleReset = async (e) => {
-  e.preventDefault();
-setFname(""),
-setLname(""),
-setPhone(""),
-setaadharNo(""),
-setaddress(""),
- setbankAccountNo(""),
- setbankIfscCode(""),
- setbankName(""), 
-setbirthDate(""),
-seteducation(""),
-setbloodGroup(""),
-setbranchName(""),
-setgender(""),
-setjobRole(""),
-setjoiningDate(""),
-setpanCard(""),
-setsalary(""),
-setstatus(""),
-setEmail("")
-}
-
-
-
-
-
-  // Update Employee submission with validation
+  // Update Employee submission
   const handleUpdateEmp = async (e) => {
     e.preventDefault();
-
-    if (!validateFields()) {
-      return;
-    }
-
+    if (!validateFields()) return;
     try {
       const updatedData = {
         firstName,
@@ -289,14 +257,12 @@ setEmail("")
       fetchAllEmp();
     } catch (err) {
       toast.error("Failed to update employee");
-      console.log(err);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow">
       <h1 className="text-2xl font-bold text-center mb-6">EMPLOYEE MANAGEMENT</h1>
-
       <div className="flex justify-end mb-4">
         <button
           onClick={handleModalToggle}
@@ -305,6 +271,118 @@ setEmail("")
           + Add Employee
         </button>
       </div>
+
+      {/* Search Bar */}
+      <div className="flex justify-between mb-4">
+        <div className="flex items-center">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="Search by first name, last name or email"
+            className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button className="ml-2 px-4 py-2 bg-indigo-500 text-white rounded-md">
+            Search
+          </button>
+        </div>
+      </div>
+
+      {/* Employees Table */}
+      <div className="mt-6">
+        <div className="overflow-y-auto max-h-[400px]">
+          {currentEmployees.length > 0 ? (
+            <table className="min-w-full table-auto border-collapse border border-gray-300">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border p-2">First Name</th>
+                  <th className="border p-2">Last Name</th>
+                  <th className="border p-2">Email</th>
+                  <th className="border p-2">Job Role</th>
+                  <th className="border p-2">Phone No</th>
+                  <th className="border p-2">Status</th>
+                  <th className="border p-2">Aadhar No</th>
+                  <th className="border p-2">PanCard</th>
+                  <th className="border p-2">Education</th>
+                  <th className="border p-2">Blood Group</th>
+                  <th className="border p-2">Gender</th>
+                  <th className="border p-2">Birth Date</th>
+                  <th className="border p-2">Joining Date</th>
+                  <th className="border p-2">Bank Name</th>
+                  <th className="border p-2">Bank Account No</th>
+                  <th className="border p-2">IFSC Code</th>
+                  <th className="border p-2">Branch Name</th>
+                  <th className="border p-2">Salary</th>
+                  <th className="border p-2">Update/Delete</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentEmployees.map((employee) => (
+                  <tr key={employee.empId}>
+                    <td className="border p-2">{employee.firstName}</td>
+                    <td className="border p-2">{employee.lastName}</td>
+                    <td className="border p-2">{employee.email}</td>
+                    <td className="border p-2">{employee.jobRole}</td>
+                    <td className="border p-2">{employee.phone}</td>
+                    <td className="border p-2">{employee.status}</td>
+
+                    <td className="border p-2">{employee.aadharNo}</td>
+                    <td className="border p-2">{employee.panCard}</td>
+                    <td className="border p-2">{employee.education}</td>
+                    <td className="border p-2">{employee.bloodGroup}</td>
+                    <td className="border p-2">{employee.gender}</td>
+                    <td className="border p-2">{employee.birthDate}</td>
+                    <td className="border p-2">{employee.joiningDate}</td>
+                    <td className="border p-2">{employee.bankName}</td>
+                    <td className="border p-2">{employee.bankAccountNo}</td>
+                    <td className="border p-2">{employee.bankIfscCode}</td>
+                    <td className="border p-2">{employee.branchName}</td>
+                    <td className="border p-2">{employee.salary}</td>
+                    <td className="border p-2 flex justify-center items-center space-x-2">
+                      <CiEdit
+                        onClick={() => handleEditEmp(employee)}
+                        className="text-blue-500 text-xl cursor-pointer"
+                      />
+                      <MdDeleteOutline
+                        onClick={() => handleDeleteEmp(employee.empId)}
+                        className="text-red-500 text-xl cursor-pointer"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-center">No employees found</p>
+          )}
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 mx-2 bg-blue-600 text-white rounded-md disabled:bg-gray-400"
+          >
+            <FaChevronLeft />
+          </button>
+          <span className="px-4 py-2 text-xl">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 mx-2 bg-blue-600 text-white rounded-md disabled:bg-gray-400"
+          >
+            <FaChevronRight />
+          </button>
+        </div>
+      </div>
+
+
 
       {/* Add Employee Modal */}
       {modal && (
@@ -635,7 +713,7 @@ setEmail("")
             >
               {/* Pre-populated update form fields – include all fields */}
               <div className="space-y-2">
-                <label htmlFor="firstNameUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="firstNameUpd" className="block text-sm font-medium text-gray-700" >
                   First Name:
                 </label>
                 <input
@@ -706,7 +784,7 @@ setEmail("")
                   id="panCardUpd"
                   value={panCard}
                   onChange={(e) => setpanCard(e.target.value)}
-                  placeholder="Pancard No"
+                  placeholder="Enter your PAN card (e.g., ABCDE1234F)"
                   className="block w-full px-4 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -863,7 +941,7 @@ setEmail("")
                   id="bankIfscCodeUpd"
                   value={bankIfscCode}
                   onChange={(e) => setbankIfscCode(e.target.value)}
-                  placeholder="IFSC Code"
+                  placeholder="Enter IFSC code (e.g., ABCD0EF1234"
                   className="block w-full px-4 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -913,90 +991,7 @@ setEmail("")
         </div>
       )}
 
-      {/* Employees Table */}
-      <div className="mt-6">
-        <div className="overflow-y-auto max-h-[400px]">
-          <table className="min-w-full table-auto border-collapse border border-gray-300">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border p-2">First Name</th>
-                <th className="border p-2">Last Name</th>
-                <th className="border p-2">Email</th>
-                <th className="border p-2">Job Role</th>
-                <th className="border p-2">Phone No</th>
-                <th className="border p-2">Status</th>
-                <th className="border p-2">Aadhar No</th>
-                <th className="border p-2">PanCard</th>
-                <th className="border p-2">Education</th>
-                <th className="border p-2">Blood Group</th>
-                <th className="border p-2">Gender</th>
-                <th className="border p-2">Birth Date</th>
-                <th className="border p-2">Joining Date</th>
-                <th className="border p-2">Bank Name</th>
-                <th className="border p-2">Bank Account No</th>
-                <th className="border p-2">IFSC Code</th>
-                <th className="border p-2">Branch Name</th>
-                <th className="border p-2">Salary</th>
-                <th className="border p-2">Update/Delete</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentEmployees.map((employee) => (
-                <tr key={employee.empId}>
-                  <td className="border p-2">{employee.firstName}</td>
-                  <td className="border p-2">{employee.lastName}</td>
-                  <td className="border p-2">{employee.email}</td>
-                  <td className="border p-2">{employee.jobRole}</td>
-                  <td className="border p-2">{employee.phone}</td>
-                  <td className="border p-2">{employee.status}</td>
-                  <td className="border p-2">{employee.aadharNo}</td>
-                  <td className="border p-2">{employee.panCard}</td>
-                  <td className="border p-2">{employee.education}</td>
-                  <td className="border p-2">{employee.bloodGroup}</td>
-                  <td className="border p-2">{employee.gender}</td>
-                  <td className="border p-2">{employee.birthDate}</td>
-                  <td className="border p-2">{employee.joiningDate}</td>
-                  <td className="border p-2">{employee.bankName}</td>
-                  <td className="border p-2">{employee.bankAccountNo}</td>
-                  <td className="border p-2">{employee.bankIfscCode}</td>
-                  <td className="border p-2">{employee.branchName}</td>
-                  <td className="border p-2">{employee.salary}</td>
-                  <td className="border p-2 flex justify-center items-center space-x-2">
-                    <CiEdit
-                      onClick={() => handleEditEmp(employee)}
-                      className="text-blue-500 text-xl cursor-pointer"
-                    />
-                    <MdDeleteOutline
-                      onClick={() => handleDeleteEmp(employee.empId)}
-                      className="text-red-500 text-xl cursor-pointer"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 mx-2 bg-blue-600 text-white rounded-md disabled:bg-gray-400"
-          >
-            <FaChevronLeft />
-          </button>
-          <span className="px-4 py-2 text-xl">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 mx-2 bg-blue-600 text-white rounded-md disabled:bg-gray-400"
-          >
-            <FaChevronRight />
-          </button>
-        </div>
-      </div>
+      
     </div>
   );
 }
