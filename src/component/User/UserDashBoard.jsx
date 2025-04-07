@@ -1,75 +1,120 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, Routes, Route } from "react-router-dom";
 import SalarySlip from "./SalarySlip";
 import ViewAttendance from "./ViewAttendance";
 import {
   FaCalendarWeek,
   FaReceipt,
-  FaRegCalendarCheck,
   FaUser,
+  FaSignOutAlt
 } from "react-icons/fa";
-
-import { IoReceiptOutline } from "react-icons/io5";
+import { HiMenu, HiX } from "react-icons/hi";
 import Profile from "../Auth/Profile";
 import { useApp } from "../../context/AppContext";
+import "../DashoBoard/animations.css";
 
 const UserDashboard = () => {
   const { logoutUser } = useApp();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
+
+  // Navigation links array for DRY code
+  const navLinks = [
+    { to: "/userdashboard", label: "Dashboard", icon: null },
+    { 
+      to: "/userdashboard/viewAtten", 
+      label: "View Attendance", 
+      icon: <FaCalendarWeek className="animate-float" /> 
+    },
+    { 
+      to: "/userdashboard/salaryslip", 
+      label: "Salary Slip", 
+      icon: <FaReceipt className="animate-float" /> 
+    },
+    { 
+      to: "/userdashboard/profile", 
+      label: "View Profile", 
+      icon: <FaUser className="animate-float" /> 
+    },
+  ];
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 bg-blue-900 text-white flex flex-col">
-        <div className="p-4 text-center text-xl font-bold border-b border-blue-700">
-          My Dashboard
+    <div className="flex h-screen bg-gray-100 overflow-hidden page-container">
+      {/* Mobile menu button - only visible on small screens */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <button
+          onClick={toggleMobileMenu}
+          className="p-2 rounded-md bg-blue-800 text-white transform transition duration-300 hover:scale-110 hover:bg-blue-700 active:scale-95"
+        >
+          {mobileMenuOpen ? <HiX size={24} /> : <HiMenu size={24} />}
+        </button>
+      </div>
+
+      {/* Mobile Header - only visible on small screens */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-center p-4 bg-blue-900 text-white animate-fadeIn">
+        <h1 className="text-xl font-bold">My Dashboard</h1>
+      </div>
+
+      {/* Sidebar */}
+      <aside 
+        className={`${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0 transition-transform duration-300 ease-in-out fixed lg:relative left-0 h-full w-64 bg-blue-900 text-white shadow-xl z-40 overflow-y-auto animate-slideIn`}
+      >
+        <div className="p-6">
+          <h1 className="text-2xl font-bold mb-5 animate-fadeIn">My Dashboard</h1>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            to="/userdashboard"
-            className="block p-2 rounded hover:bg-blue-700 hover:text-gray-200"
-          >
-            Dashboard
-          </Link>
 
-          <Link
-            to="/userdashboard/viewAtten"
-            className="flex items-center gap-2 p-2 rounded hover:bg-blue-700 hover:text-gray-200"
-          >
-            <FaCalendarWeek />
-            View Attendance
-          </Link>
-
-          <Link
-            to="/userdashboard/salaryslip"
-            className="flex items-center gap-2 p-2 rounded hover:bg-blue-700 hover:text-gray-200"
-          >
-            <FaReceipt />
-            Salary Slip
-          </Link>
-
-          <Link
-            to="/userdashboard/profile"
-            className="flex items-center gap-2 p-2 rounded hover:bg-blue-700 hover:text-gray-200"
-          >
-            <FaReceipt />
-            View Profile
-          </Link>
+        <nav className="px-4">
+          <div className="space-y-1">
+            {navLinks.map((link, index) => (
+              <Link
+                key={index}
+                to={link.to}
+                className="flex items-center gap-2 p-2 rounded hover:bg-blue-700 hover:text-gray-200 transform transition duration-300 hover:translate-x-1 sidebar-menu-item animate-fadeIn"
+                style={{ animationDelay: `${index * 0.1}s` }}
+                onClick={closeMobileMenu}
+              >
+                {link.icon && link.icon} {link.label}
+              </Link>
+            ))}
+          </div>
 
           <button
-            onClick={() => logoutUser()}
-            className="block p-2 rounded hover:bg-blue-700 hover:text-gray-200"
+            onClick={logoutUser}
+            className="flex items-center gap-2 p-2 mt-20 w-full rounded hover:bg-blue-700 hover:text-gray-200 transform transition duration-300 hover:translate-x-1 hover:bg-red-600 animate-pulse-slow"
           >
-            Logout
+            <FaSignOutAlt /> Logout
           </button>
         </nav>
       </aside>
 
-      <main className="flex-1 p-6 w-full">
-        <Routes>
-          <Route path="/" element={<div>Welcome to User Dashboard</div>} />
+      {/* Overlay for mobile menu - only visible when menu is open on small screens */}
+      {mobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30 animate-fadeIn"
+          onClick={closeMobileMenu}
+        ></div>
+      )}
 
-          <Route path="/salaryslip" element={<SalarySlip />} />
-          <Route path="/viewAtten" element={<ViewAttendance />} />
-          <Route path="/profile" element={<Profile />} />
-        </Routes>
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-4 animate-fadeIn">
+        {/* Add top padding on mobile to account for the fixed header */}
+        <div className="pt-16 lg:pt-0 h-full">
+          <Routes>
+            <Route path="/" element={<div className="p-6 bg-white rounded-lg shadow-md transform transition duration-300 hover:shadow-xl card">Welcome to User Dashboard</div>} />
+            <Route path="/salaryslip" element={<SalarySlip />} />
+            <Route path="/viewAtten" element={<ViewAttendance />} />
+            <Route path="/profile" element={<Profile />} />
+          </Routes>
+        </div>
       </main>
     </div>
   );

@@ -9,6 +9,7 @@ import Salary from "../component/Auth/Salaray";
 import EmployeeSearch from "../component/Auth/EmployeeSearch";
 import Dashboard from "../component/DashoBoard/DashBoard";
 import UserDashBoard from "../component/User/UserDashBoard";
+import MasterAdmin from "../component/MasterAdmin/MasterAdmin";
 import { useApp } from "../context/AppContext";
 import ProtectRoute from "../component/Auth/ProtectRoute";
 
@@ -50,6 +51,14 @@ const RouterNavbar = () => {
           element={
             <ProtectRoute>
               <Dashboard />
+            </ProtectRoute>
+          }
+        />
+        <Route
+          path="/masteradmin/*"
+          element={
+            <ProtectRoute>
+              <MasterAdmin />
             </ProtectRoute>
           }
         />

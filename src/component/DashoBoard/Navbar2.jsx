@@ -6,8 +6,12 @@ const Navbar2 = () => {
     const { fetchAllEmp, emp, logoutUser } = useApp();
 
     useEffect(() => {
-        fetchAllEmp();
-      }, []);
+        // Only fetch if the emp array is empty
+        if (!emp || emp.length === 0) {
+            fetchAllEmp();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     
       // Count active and inactive employees
       const activeEmp = emp.filter((employee) => employee.status === "active");

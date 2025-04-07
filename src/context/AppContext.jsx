@@ -125,7 +125,7 @@ export const AppProvider = ({ children }) => {
         "http://localhost:8282/public/addEmp",
         userData
       );
-      fetchAllEmp();
+      setEmp(prevEmp => [...prevEmp, response.data]);
       return response.data;
     } catch (error) {
       console.error("Failed to save user:", error);
@@ -156,17 +156,51 @@ export const AppProvider = ({ children }) => {
   };
 
   const fetchAllEmp = async () => {
+    // More robust throttling & caching
+    // Static variable to track last call time and cached data
+    if (!fetchAllEmp.cache) {
+      fetchAllEmp.cache = { lastCall: 0, data: null, inProgress: false };
+    }
+    
+    // If we have data and it's been less than 5 seconds since last fetch, return cached data
+    const now = Date.now();
+    if (fetchAllEmp.cache.data && 
+        now - fetchAllEmp.cache.lastCall < 5000) {
+      console.log("Using cached employee data");
+      return fetchAllEmp.cache.data;
+    }
+    
+    // If a request is already in progress, don't start another
+    if (fetchAllEmp.cache.inProgress) {
+      console.log("Employee data fetch already in progress");
+      return;
+    }
+    
+    // Mark that a request is in progress
+    fetchAllEmp.cache.inProgress = true;
+    
     try {
+      console.log("Fetching employee data from API");
       const response = await axios.get(
         "http://localhost:8282/public/getAllEmp"
       );
       if (response.status === 200 && Array.isArray(response.data)) {
         setEmp(response.data);
+        
+        // Update cache
+        fetchAllEmp.cache.data = response.data;
+        fetchAllEmp.cache.lastCall = now;
+        
+        return response.data;
       } else {
         console.error("Error: API response is not an array", response);
       }
     } catch (error) {
       console.error("API Error while fetching Employee:", error);
+      throw error;
+    } finally {
+      // Clear in-progress flag regardless of success or failure
+      fetchAllEmp.cache.inProgress = false;
     }
   };
 
@@ -174,13 +208,12 @@ export const AppProvider = ({ children }) => {
     try {
       await axios.delete(`http://localhost:8282/public/deleteEmp/${empId}`);
       toast.success("Employee deleted successfully");
-      fetchAllEmp();
+      setEmp(prevEmp => prevEmp.filter(emp => emp.empId !== empId));
     } catch (error) {
       toast.error("Failed to delete employee");
     }
   };
 
-  // ADD: Update Employee API – sends JSON payload to /public/update/{empId}
   const updateEmployee = async (empId, updatedData) => {
     try {
       const response = await axios.put(
@@ -188,7 +221,9 @@ export const AppProvider = ({ children }) => {
         updatedData,
         { headers: { "Content-Type": "application/json" } }
       );
-      fetchAllEmp();
+      setEmp(prevEmp => prevEmp.map(emp => 
+        emp.empId === empId ? response.data : emp
+      ));
       return response.data;
     } catch (error) {
       console.error("Failed to update employee:", error);
@@ -210,7 +245,7 @@ export const AppProvider = ({ children }) => {
         fetchAllEmp,
         emp,
         deleteEmployee,
-        updateEmployee, // added updateEmployee here
+        updateEmployee,
       }}
     >
       {children}

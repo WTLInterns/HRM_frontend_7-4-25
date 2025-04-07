@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import companyLogo from "../../assets/company.jpeg"     // The company logo
 import WtlSign from "../../assets/WTL Sign.jpg"         // The WTL sign
 import axios from "axios"
+import { FaDownload, FaPrint, FaMoneyBill } from "react-icons/fa"
+import "../DashoBoard/animations.css"
+import { useApp } from "../../context/AppContext"
 
 // Helper: format date from "YYYY-MM-DD" to "DD-MM-YYYY"
 const formatDate = (dateStr) => {
@@ -97,580 +100,272 @@ const calculateSalaryComponents = (yearlyCTC) => {
   }
 }
 
-export default function SalaryReport() {
-  const [employeeName, setEmployeeName] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [yearlyCTC, setYearlyCTC] = useState(0)
-  const [salaryReport, setSalaryReport] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [s, setS] = useState(null)
+const SalarySlip = () => {
+  const { user } = useApp()
+  const [salaryData, setSalaryData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const [year, setYear] = useState(new Date().getFullYear())
 
-  // Colors
-  const faintGreen = [220, 230, 195]
-  const white = [255, 255, 255]
-  const black = [0, 0, 0]
+  const months = [
+    { value: 1, label: "January" },
+    { value: 2, label: "February" },
+    { value: 3, label: "March" },
+    { value: 4, label: "April" },
+    { value: 5, label: "May" },
+    { value: 6, label: "June" },
+    { value: 7, label: "July" },
+    { value: 8, label: "August" },
+    { value: 9, label: "September" },
+    { value: 10, label: "October" },
+    { value: 11, label: "November" },
+    { value: 12, label: "December" }
+  ]
 
-  // Auto-fetch employee info when employeeName changes
+  const years = Array.from(
+    { length: 5 },
+    (_, i) => new Date().getFullYear() - i
+  )
+
   useEffect(() => {
-    if (employeeName.trim() !== "") {
-      const fetchEmployeeInfo = async () => {
-        try {
-          const response = await axios.get(`http://localhost:8282/public/find/${employeeName}`)
-          setYearlyCTC(response.data.salary)
-          setS(response.data)
-        } catch (error) {
-          console.error("Error fetching employee info", error)
-        }
-      }
-      fetchEmployeeInfo()
-    }
-  }, [employeeName])
+    fetchSalarySlip()
+  }, [month, year])
 
-  const handleSubmit = async () => {
+  const fetchSalarySlip = async () => {
+    if (!user) return
+    
     setLoading(true)
-    setError(null)
+    setError("")
+    
     try {
-      const response = await fetch(
-        `http://localhost:8282/public/generateReport?employeeName=${employeeName}&startDate=${startDate}&endDate=${endDate}`
-      )
-      if (!response.ok) {
-        throw new Error("Failed to fetch salary report")
-      }
-      const data = await response.json()
-      setSalaryReport(data)
+      // This is a mock implementation - replace with actual API call
+      // const response = await axios.get(`http://localhost:8282/salary/slip/${user.id}?month=${month}&year=${year}`);
+      // setSalaryData(response.data);
+      
+      // Mock data for demonstration
+      setTimeout(() => {
+        const mockData = {
+          employeeId: "EMP123",
+          name: user?.firstName + " " + user?.lastName || "John Doe",
+          email: user?.email || "john@example.com",
+          designation: "Software Developer",
+          month: months.find(m => m.value === month)?.label,
+          year: year,
+          basicSalary: 50000,
+          hra: 15000,
+          conveyanceAllowance: 5000,
+          medicalAllowance: 3000,
+          otherAllowances: 7000,
+          grossSalary: 80000,
+          pf: 6000,
+          professionalTax: 200,
+          incomeTax: 5000,
+          loanDeduction: 0,
+          otherDeductions: 1000,
+          totalDeductions: 12200,
+          netSalary: 67800,
+          daysWorked: 22,
+          totalDays: 22
+        };
+        
+        setSalaryData(mockData)
+        setLoading(false)
+      }, 1000)
+      
     } catch (err) {
-      setError(err.message)
-    } finally {
+      console.error("Error fetching salary slip:", err)
+      setError("Failed to fetch salary slip. Please try again later.")
       setLoading(false)
     }
   }
 
-  const generateSalarySlipPDF = () => {
-    try {
-      const doc = new jsPDF()
-      const pageWidth = doc.internal.pageSize.width
-      const pageHeight = doc.internal.pageSize.height
-      const margin = 15
-      const contentWidth = pageWidth - 2 * margin
-      let yPos = margin
+  const handlePrint = () => {
+    window.print()
+  }
 
-      // Helper: create a cell with borders
-      const createCell = (
-        x,
-        y,
-        width,
-        height,
-        text = "",
-        fontSize = 10,
-        align = "left",
-        bold = false,
-        fillColor = white
-      ) => {
-        doc.setFillColor(...fillColor)
-        doc.rect(x, y, width, height, "F")
-        doc.setDrawColor(...black)
-        doc.setLineWidth(0.1)
-        doc.rect(x, y, width, height, "S")
-
-        doc.setFontSize(fontSize)
-        doc.setFont("helvetica", bold ? "bold" : "normal")
-        if (text) {
-          doc.text(text.toString(), align === "center" ? x + width / 2 : x + 2, y + height / 2, {
-            align: align === "center" ? "center" : "left",
-            baseline: "middle",
-          })
-        }
-      }
-
-      // Outer container start
-      const slipStartY = yPos
-
-      // 1) HEADER with green background
-      const headerBoxHeight = 14
-      doc.setFillColor(...faintGreen)
-      doc.rect(margin, yPos, contentWidth, headerBoxHeight, "F")
-      doc.setDrawColor(...black)
-      doc.setLineWidth(0.1)
-      doc.rect(margin, yPos, contentWidth, headerBoxHeight, "S")
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(20)
-      doc.setFont("helvetica", "bold")
-      const companyText = "WTL TOURISM PVT. LTD."
-      doc.textWithLink(
-        companyText,
-        margin + (contentWidth / 2),
-        yPos + headerBoxHeight / 2,
-        {
-          url: "https://worldtriplink.com/",
-          align: "center",
-        }
-      )
-      yPos += headerBoxHeight
-
-      // 2) Company address row
-      createCell(
-        margin,
-        yPos,
-        contentWidth,
-        12,
-        "Company Address :- A Wing 1st Floor City Vista Office no-016 kharadi Pune-411014",
-        12,
-        "center",
-        true,
-        faintGreen
-      )
-      yPos += 12
-
-      // Example: "PAY SLIP FOR MARCH-2025"
-      const paySlipMonth = startDate
-        ? new Date(startDate).toLocaleString("en-US", { month: "long", year: "numeric" }).toUpperCase()
-        : "MARCH-2025"
-
-      createCell(
-        margin,
-        yPos,
-        contentWidth,
-        10,
-        `PAY SLIP FOR ${paySlipMonth}`,
-        14,
-        "center",
-        true,
-        faintGreen
-      )
-      yPos += 12
-
-      // 3) EMPLOYEE INFORMATION
-      const employeeInfoBoxY = yPos
-      createCell(margin, yPos, contentWidth, 10, "Employee Information", 13, "center", true, faintGreen)
-      yPos += 10
-
-      const col1 = contentWidth * 0.15
-      const col2 = contentWidth * 0.35
-      const col3 = contentWidth * 0.15
-      const col4 = contentWidth * 0.35
-
-      // Row 1: UID & Designation
-      createCell(margin, yPos, col1, 10, "UID:", 10, "left", true)
-      createCell(margin + col1, yPos, col2, 10, salaryReport?.uid || "N/A", 10, "left")
-      createCell(margin + col1 + col2, yPos, col3, 10, "Designation:", 10, "left", true)
-      createCell(
-        margin + col1 + col2 + col3,
-        yPos,
-        col4,
-        10,
-        salaryReport?.jobRole ? toTitleCase(salaryReport.jobRole) : "N/A",
-        10,
-        "left"
-      )
-      yPos += 10
-
-      // Row 2: Name & Department
-      createCell(margin, yPos, col1, 10, "Name:", 10, "left", true)
-      createCell(
-        margin + col1,
-        yPos,
-        col2,
-        10,
-        `${salaryReport?.firstName ? toTitleCase(salaryReport.firstName) : ""} ${salaryReport?.lastName ? toTitleCase(salaryReport.lastName) : ""}`,
-        10,
-        "left"
-      )
-      createCell(margin + col1 + col2, yPos, col3, 10, "Department:", 10, "left", true)
-      createCell(
-        margin + col1 + col2 + col3,
-        yPos,
-        col4,
-        10,
-        salaryReport?.department || "N/A",
-        10,
-        "left"
-      )
-      yPos += 10
-
-      // Outline for Employee Info
-      const employeeInfoBoxHeight = yPos - employeeInfoBoxY
-      doc.rect(margin, employeeInfoBoxY, contentWidth, employeeInfoBoxHeight, "S")
-
-      // 4) EMPLOYEE ATTENDANCE & BANK DETAILS
-      const rowHeight = 10
-      const colWidth = contentWidth / 4
-
-      // Header row
-      createCell(
-        margin,
-        yPos,
-        colWidth * 2,
-        rowHeight,
-        "Employee Attendance",
-        11,
-        "center",
-        true,
-        faintGreen
-      )
-      createCell(
-        margin + colWidth * 2,
-        yPos,
-        colWidth * 2,
-        rowHeight,
-        "Bank Details",
-        11,
-        "center",
-        true,
-        faintGreen
-      )
-      yPos += rowHeight
-
-      // Row 1
-      createCell(margin, yPos, colWidth, rowHeight, "Working Days:", 10, "left", true)
-      createCell(
-        margin + colWidth,
-        yPos,
-        colWidth,
-        rowHeight,
-        String(salaryReport?.workingDays ?? 0),
-        10,
-        "left"
-      )
-      createCell(
-        margin + colWidth * 2,
-        yPos,
-        colWidth,
-        rowHeight,
-        "Bank Name:",
-        10,
-        "left",
-        true
-      )
-      createCell(
-        margin + colWidth * 3,
-        yPos,
-        colWidth,
-        rowHeight,
-        salaryReport?.bankName ? toTitleCase(salaryReport.bankName) : "N/A",
-        10,
-        "left"
-      )
-      yPos += rowHeight
-
-      // Row 2
-      createCell(margin, yPos, colWidth, rowHeight, "Leave Taken:", 10, "left", true)
-      createCell(
-        margin + colWidth,
-        yPos,
-        colWidth,
-        rowHeight,
-        String(salaryReport?.leaveTaken ?? 0),
-        10,
-        "left"
-      )
-      createCell(
-        margin + colWidth * 2,
-        yPos,
-        colWidth,
-        rowHeight,
-        "IFSC Code:",
-        10,
-        "left",
-        true
-      )
-      createCell(
-        margin + colWidth * 3,
-        yPos,
-        colWidth,
-        rowHeight,
-        s?.bankIfscCode || "N/A",
-        10,
-        "left"
-      )
-      yPos += rowHeight
-
-      // Row 3
-      createCell(margin, yPos, colWidth, rowHeight, "Payable Days:", 10, "left", true)
-      createCell(
-        margin + colWidth,
-        yPos,
-        colWidth,
-        rowHeight,
-        String(salaryReport?.payableDays ?? 0),
-        10,
-        "left"
-      )
-      createCell(
-        margin + colWidth * 2,
-        yPos,
-        colWidth,
-        rowHeight,
-        "Branch Name:",
-        10,
-        "left",
-        true
-      )
-      createCell(
-        margin + colWidth * 3,
-        yPos,
-        colWidth,
-        rowHeight,
-        salaryReport?.branchName ? toTitleCase(salaryReport.branchName) : "N/A",
-        10,
-        "left"
-      )
-      yPos += rowHeight
-
-      // Row 4
-      createCell(margin, yPos, colWidth, rowHeight, "", 10, "left")
-      createCell(margin + colWidth, yPos, colWidth, rowHeight, "", 10, "left")
-      createCell(
-        margin + colWidth * 2,
-        yPos,
-        colWidth,
-        rowHeight,
-        "Account No:",
-        10,
-        "left",
-        true
-      )
-      createCell(
-        margin + colWidth * 3,
-        yPos,
-        colWidth,
-        rowHeight,
-        salaryReport?.bankAccountNo || "N/A",
-        10,
-        "left"
-      )
-      yPos += rowHeight
-
-      // 5) SALARY CALCULATIONS
-      const salaryCalcBoxY = yPos
-      createCell(margin, yPos, contentWidth, 10, "Salary Calculations", 11, "center", true, faintGreen)
-      yPos += 10
-
-      const salaryCol1 = contentWidth * 0.4
-      const salaryCol2 = contentWidth * 0.2
-      const salaryCol3 = contentWidth * 0.2
-      const salaryCol4 = contentWidth * 0.2
-
-      const ctcVal = yearlyCTC
-      const { basic, hra, da, special, totalAllowance, grossSalary, monthlyCTC } =
-        calculateSalaryComponents(ctcVal)
-
-      const workingDays = salaryReport?.workingDays || 30
-      const perDaySalary = monthlyCTC / workingDays
-      const totalLeaves = workingDays - (salaryReport?.payableDays ?? 0)
-      const deductionVal = Math.round(perDaySalary * totalLeaves)
-      const professionalTaxVal = salaryReport?.professionalTax ? Math.round(salaryReport.professionalTax) : 0
-      const tdsVal = salaryReport?.tds ? Math.round(salaryReport.tds) : 0
-      const totalDeductions = deductionVal + professionalTaxVal + tdsVal
-      const computedNetPayable = grossSalary - totalDeductions
-      const netPayInteger = Math.max(0, computedNetPayable)
-
-      // Cost To Company & Deductions
-      createCell(margin, yPos, salaryCol1, 10, "Cost To Company - CTC", 10, "left", true)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${ctcVal}`, 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Deductions", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${deductionVal}`, 10, "right")
-      yPos += 10
-
-      // Basic & Professional Tax
-      createCell(margin, yPos, salaryCol1, 10, "Basic", 10, "left", true)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${basic}`, 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Professional Tax", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${professionalTaxVal}`, 10, "right")
-      yPos += 10
-
-      // House Rent Allowance & TDS
-      createCell(margin, yPos, salaryCol1, 10, "House Rent Allowance", 10, "left", true)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${hra}`, 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "TDS", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${tdsVal}`, 10, "right")
-      yPos += 10
-
-      // DA & blank
-      createCell(margin, yPos, salaryCol1, 10, "DA Allowance (53% of Basic)", 10, "left", true)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${da}`, 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, "", 10, "right")
-      yPos += 10
-
-      // Special & Total Deductions
-      createCell(margin, yPos, salaryCol1, 10, "Special Allowance", 10, "left", true)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${special}`, 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Total Deductions", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${totalDeductions}`, 10, "right")
-      yPos += 10
-
-      // Total Allowance & Additional Perks
-      createCell(margin, yPos, salaryCol1, 10, "Total Allowance", 10, "right", true)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${totalAllowance}`, 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Additional Perks", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, salaryReport?.additionalPerks || "N/A", 10, "right")
-      yPos += 10
-
-      // Gross Salary & Bonus
-      createCell(margin, yPos, salaryCol1, 10, "Gross Salary", 10, "right", true)
-      createCell(margin + salaryCol1, yPos, salaryCol2, 10, `Rs. ${grossSalary}`, 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Bonus", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${salaryReport?.bonus ? Math.round(salaryReport.bonus) : 0}`, 10, "right")
-      yPos += 10
-
-      // Net Payable
-      createCell(margin, yPos, salaryCol1 + salaryCol2, 10, "", 10, "left")
-      createCell(margin + salaryCol1 + salaryCol2, yPos, salaryCol3, 10, "Net Payable Salary", 10, "left", true)
-      createCell(margin + salaryCol1 + salaryCol2 + salaryCol3, yPos, salaryCol4, 10, `Rs. ${netPayInteger}`, 10, "right")
-      yPos += 10
-
-      // Amount in Words
-      const amountWords = numberToWords(netPayInteger) + " Rupees Only"
-      createCell(margin, yPos, contentWidth * 0.3, 10, "Amount in Words:", 10, "left", true)
-      createCell(margin + contentWidth * 0.3, yPos, contentWidth * 0.7, 10, amountWords, 10, "center")
-      yPos += 10
-      createCell(margin, yPos, contentWidth, 10, "", 10, "left")
-      yPos += 10
-
-      const salaryCalcBoxHeight = yPos - salaryCalcBoxY
-      doc.rect(margin, salaryCalcBoxY, contentWidth, salaryCalcBoxHeight, "S")
-
-      // ===================
-      // SIGNATURE SECTION
-      // ===================
-      // 2 columns: left = Prepared By + WTL sign, right = Approved By + company logo + bigger WTL sign below.
-      const sigColumnWidth = contentWidth / 2
-      const signatureStartY = yPos
-
-      // Row 1 (text)
-      createCell(margin, signatureStartY, sigColumnWidth, 10, "Prepared By:", 10, "left", true)
-      createCell(margin + sigColumnWidth, signatureStartY, sigColumnWidth, 10, "Approved By:", 10, "left", true)
-      yPos += 10
-
-      // Row 2 (images)
-      const signatureRowHeight = 40  // Decreased row height
-      createCell(margin, yPos, sigColumnWidth, signatureRowHeight, "", 10, "left")
-      createCell(margin + sigColumnWidth, yPos, sigColumnWidth, signatureRowHeight, "", 10, "left")
-
-      // Left column: WTL sign (smaller image)
-      try {
-        doc.addImage(
-          WtlSign,
-          "JPEG",
-          margin + 10,   // x
-          yPos + 5,      // y offset
-          50,            // width (decreased)
-          35             // height (decreased)
-        )
-      } catch (error) {
-        console.error("Error adding WTL sign on left:", error)
-      }
-
-      // Right column: first the company logo, then a smaller WTL sign below it
-      try {
-        // Company logo near top
-        doc.addImage(
-          companyLogo,
-          "JPEG",
-          margin + sigColumnWidth + 10,
-          yPos + 5,
-          50, // smaller width
-          35  // smaller height
-        )
-      } catch (error) {
-        console.error("Error adding images on right column:", error)
-      }
-
-      yPos += signatureRowHeight
-
-      // ADD THE HORIZONTAL LINE AFTER IMAGES
-      doc.setLineWidth(0.1)
-      doc.setDrawColor(0, 0, 0)
-      doc.line(margin, yPos, margin + contentWidth, yPos) // from left margin to right margin
-
-      // Outline entire slip (optional)
-      const totalSlipHeight = yPos - slipStartY
-      doc.rect(margin, slipStartY, contentWidth, totalSlipHeight, "S")
-
-      // Finally, save PDF
-      doc.save(`WTL_salary_slip_${employeeName || "DEC2024"}.pdf`)
-    } catch (error) {
-      console.error("Error generating PDF:", error)
-      alert("Error generating PDF. Please check console for details.")
-    }
+  // Mock download functionality
+  const handleDownload = () => {
+    alert("Download functionality would be implemented here.")
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-md shadow-lg">
-      <h2 className="text-2xl font-bold text-center mb-6">Generate Salary Report</h2>
-      <div className="space-y-4">
-        <div className="flex flex-col">
-          <label htmlFor="employeeName" className="text-sm font-semibold mb-1">
-            Employee Name
-          </label>
-          <input
-            type="text"
-            id="employeeName"
-            value={employeeName}
-            onChange={(e) => setEmployeeName(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md"
-            placeholder="Enter Employee Name"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="startDate" className="text-sm font-semibold mb-1">
-            Start Date
-          </label>
-          <input
-            type="date"
-            id="startDate"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="endDate" className="text-sm font-semibold mb-1">
-            End Date
-          </label>
-          <input
-            type="date"
-            id="endDate"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="yearlyCTC" className="text-sm font-semibold mb-1">
-            Yearly CTC (₹)
-          </label>
-          <input
-            type="number"
-            id="yearlyCTC"
-            value={yearlyCTC}
-            onChange={(e) => setYearlyCTC(Number(e.target.value))}
-            className="p-2 border border-gray-300 rounded-md"
-            placeholder="Enter Yearly CTC"
-          />
-        </div>
-        <div className="text-center">
-          <button onClick={handleSubmit} className="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600">
-            Generate Report
-          </button>
-        </div>
-        {loading && <div className="text-center text-gray-500">Loading...</div>}
-        {error && <div className="text-center text-red-500">{error}</div>}
-        <div className="mt-6">
-          {salaryReport && (
-            <div className="text-center mt-4">
-              <button
-                onClick={generateSalarySlipPDF}
-                className="bg-green-500 text-white py-2 px-6 rounded-md hover:bg-green-600"
+    <div className="p-4 animate-fadeIn">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 transform transition duration-300 hover:scale-105">Salary Slip</h2>
+      
+      <div className="bg-white p-6 rounded-lg shadow-lg mb-6 transform transition duration-300 hover:shadow-xl card">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <div className="flex items-center text-blue-600">
+            <FaMoneyBill className="text-2xl mr-2 animate-float" />
+            <h3 className="text-lg font-medium">Select Period</h3>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="transform transition duration-300 hover:translate-y-[-2px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Month</label>
+              <select 
+                value={month} 
+                onChange={(e) => setMonth(parseInt(e.target.value))}
+                className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 ease-in-out hover:border-blue-300"
               >
-                Download Salary Slip (PDF)
-              </button>
+                {months.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+              <select 
+                value={year} 
+                onChange={(e) => setYear(parseInt(e.target.value))}
+                className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 ease-in-out hover:border-blue-300"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
+      
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="loader"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-100 text-red-700 p-4 rounded-lg animate-pulse">
+          {error}
+        </div>
+      ) : salaryData ? (
+        <div className="bg-white p-6 rounded-lg shadow-lg printable-content animate-slideIn">
+          {/* Salary Slip Header */}
+          <div className="text-center mb-6 border-b pb-4">
+            <h3 className="text-xl font-bold text-gray-800">Company Name</h3>
+            <p className="text-gray-600">Salary Slip for {salaryData.month} {salaryData.year}</p>
+          </div>
+          
+          {/* Employee Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 border-b pb-4">
+            <div>
+              <p className="text-sm text-gray-600">Employee ID</p>
+              <p className="font-medium">{salaryData.employeeId}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Name</p>
+              <p className="font-medium">{salaryData.name}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Email</p>
+              <p className="font-medium">{salaryData.email}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Designation</p>
+              <p className="font-medium">{salaryData.designation}</p>
+            </div>
+          </div>
+          
+          {/* Salary Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
+            <div className="col-span-1 md:col-span-2">
+              <h4 className="text-lg font-semibold text-gray-700 mb-2">Earnings</h4>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Basic Salary</p>
+              <p className="font-medium">₹{salaryData.basicSalary.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">HRA</p>
+              <p className="font-medium">₹{salaryData.hra.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Conveyance Allowance</p>
+              <p className="font-medium">₹{salaryData.conveyanceAllowance.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Medical Allowance</p>
+              <p className="font-medium">₹{salaryData.medicalAllowance.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Other Allowances</p>
+              <p className="font-medium">₹{salaryData.otherAllowances.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600 font-semibold">Gross Salary</p>
+              <p className="font-bold text-green-600">₹{salaryData.grossSalary.toLocaleString()}</p>
+            </div>
+            
+            <div className="col-span-1 md:col-span-2 mt-4">
+              <h4 className="text-lg font-semibold text-gray-700 mb-2">Deductions</h4>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Provident Fund</p>
+              <p className="font-medium">₹{salaryData.pf.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Professional Tax</p>
+              <p className="font-medium">₹{salaryData.professionalTax.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Income Tax</p>
+              <p className="font-medium">₹{salaryData.incomeTax.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600">Other Deductions</p>
+              <p className="font-medium">₹{salaryData.otherDeductions.toLocaleString()}</p>
+            </div>
+            
+            <div className="transform transition duration-300 hover:translate-y-[-2px] hover:bg-blue-50 p-2 rounded">
+              <p className="text-sm text-gray-600 font-semibold">Total Deductions</p>
+              <p className="font-bold text-red-600">₹{salaryData.totalDeductions.toLocaleString()}</p>
+        </div>
+        </div>
+          
+          {/* Net Salary */}
+          <div className="border-t pt-4 mt-2">
+            <div className="flex justify-between items-center">
+              <h4 className="text-lg font-semibold text-gray-700">Net Salary</h4>
+              <p className="text-xl font-bold text-green-600 animate-pulse-slow">₹{salaryData.netSalary.toLocaleString()}</p>
+        </div>
+        </div>
+          
+          {/* Action Buttons */}
+          <div className="mt-6 flex justify-end space-x-4">
+            <button 
+              onClick={handlePrint}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition duration-300 hover:translate-y-[-2px] hover:shadow-md"
+            >
+              <FaPrint className="mr-2" /> Print
+          </button>
+            
+              <button
+              onClick={handleDownload}
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transform transition duration-300 hover:translate-y-[-2px] hover:shadow-md"
+              >
+              <FaDownload className="mr-2" /> Download PDF
+              </button>
+            </div>
+        </div>
+      ) : (
+        <div className="text-center text-gray-500 py-8">No salary data available</div>
+      )}
     </div>
   )
 }
+
+export default SalarySlip
