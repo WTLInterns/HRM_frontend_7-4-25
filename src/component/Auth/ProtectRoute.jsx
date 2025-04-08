@@ -39,7 +39,7 @@ const ProtectRoute = ({ children }) => {
   }, [token, isValidToken, user]);
 
   if (!user || !isValidToken) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children ? <>{children}</> : <Outlet />;

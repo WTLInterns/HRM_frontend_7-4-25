@@ -1,108 +1,103 @@
-import React, { useState } from "react";
-import { Link, Routes, Route } from "react-router-dom";
-import { IoIosLogOut } from "react-icons/io";
-import { MdDashboard, MdSupervisorAccount } from "react-icons/md";
-import { HiMenu, HiX } from "react-icons/hi";
+import React, { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import SubAdminManagement from "../DashoBoard/SubAdminManagement";
 import "../DashoBoard/animations.css";
+import Sidebar from "./sidebar";
+import RegisterCompany from "./RegisterCompany";
+import ViewCompany from "./ViewCompany";
+import Dashboard from "./Dashboard";
+import Profile from "./Profile";
+import { FaBars } from "react-icons/fa";
+
+// Add a CSS module for background styles
+const bgPattern = {
+  backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%233B82F6' fill-opacity='0.07' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+  backgroundSize: '100px 100px'
+};
+
+// Add global theme styles
+const appTheme = {
+  backgroundColor: '#1E293B', // darker background
+  textColor: '#E2E8F0',      // light text
+  accentColor: '#3B82F6'     // blue accent
+};
 
 const MasterAdmin = () => {
-  const { logoutUser } = useApp();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
+  useEffect(() => {
+    console.log("MasterAdmin component mounted");
+    // Check if user is in localStorage
+    const user = localStorage.getItem("user");
+    console.log("User in localStorage:", user);
+
+    // Handle sidebar visibility based on screen size
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    // Add event listener
+    window.addEventListener("resize", handleResize);
+
+    // Cleanup
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  console.log("MasterAdmin component rendering");
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
-
-  const closeMobileMenu = () => {
-    setMobileMenuOpen(false);
-  };
-
-  // Navigation links array for DRY code
-  const navLinks = [
-    { to: "/masteradmin", label: "Dashboard", icon: <MdDashboard /> },
-    { to: "/masteradmin/subadmin", label: "Sub Admins", icon: <MdSupervisorAccount /> },
-  ];
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Mobile menu button - only visible on small screens */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={toggleMobileMenu}
-          className="p-2 rounded-md bg-gray-700 text-white"
-        >
-          {mobileMenuOpen ? <HiX size={24} /> : <HiMenu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Header - only visible on small screens */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-center p-4 bg-gray-800 text-white">
-        <h1 className="text-xl font-bold">Master Admin Dashboard</h1>
-      </div>
-
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-900 to-blue-900 text-gray-100">
       {/* Sidebar */}
-      <aside 
-        className={`${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 transition-transform duration-300 ease-in-out fixed lg:relative left-0 h-full w-64 bg-gray-800 text-white shadow-xl z-40 overflow-y-auto flex flex-col`}
+      <div 
+        className={`fixed md:relative z-30 transition-all duration-300 ease-in-out h-screen ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0`}
       >
-        <div className="p-6">
-          <h1 className="text-2xl font-bold mb-5">Master Admin Dashboard</h1>
-        </div>
-
-        <nav className="px-4 flex-grow">
-          <div className="space-y-1">
-            {navLinks.map((link, index) => (
-              <Link
-                key={index}
-                to={link.to}
-                className="flex items-center gap-2 p-2 rounded hover:bg-gray-700 hover:text-gray-200 transition-all duration-300 menu-item ripple animate-fadeIn"
-                style={{ animationDelay: `${index * 0.1}s` }}
-                onClick={closeMobileMenu}
-              >
-                {link.icon && <span className="text-gray-300">{link.icon}</span>} {link.label}
-              </Link>
-            ))}
-          </div>
-        </nav>
-
-        <div className="mt-auto px-4 pb-6">
-          <button
-            onClick={logoutUser}
-            className="flex items-center gap-2 p-2 w-full rounded bg-red-600 hover:bg-red-700 text-white transition-all duration-300 hover:translate-y-[-2px] hover:shadow-md"
-          >
-            <IoIosLogOut className="text-white animate-pulse-slow" /> Logout
-          </button>
-        </div>
-      </aside>
-
-      {/* Overlay for mobile menu - only visible when menu is open on small screens */}
-      {mobileMenuOpen && (
+        <Sidebar />
+      </div>
+      
+      {/* Mobile Overlay */}
+      {isSidebarOpen && window.innerWidth < 768 && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-          onClick={closeMobileMenu}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20" 
+          onClick={toggleSidebar}
         ></div>
       )}
-
+      
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4">
-        {/* Add top padding on mobile to account for the fixed header */}
-        <div className="pt-16 lg:pt-0 h-full page-transition-container">
+      <div className="flex-1 overflow-auto h-full">
+        {/* Mobile Toggle Button */}
+        <div className="md:hidden p-4">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 bg-blue-800 text-blue-100 rounded-md shadow-md hover:bg-blue-700 transition-colors duration-200"
+          >
+            <FaBars size={18} />
+          </button>
+        </div>
+        
+        <div className="p-4">
           <Routes>
-            <Route path="/" element={
-              <div className="p-6 bg-white rounded-lg shadow-md animate-fadeIn">
-                <h2 className="text-2xl font-semibold mb-4">Welcome to Master Admin Dashboard</h2>
-                <p className="text-gray-600">
-                  You can manage Sub Admins and access system-wide settings from here.
-                </p>
-              </div>
-            } />
-            <Route path="subadmin" element={<SubAdminManagement />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/register-company" element={<RegisterCompany />} />
+            <Route path="/view-company" element={<ViewCompany />} />
           </Routes>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

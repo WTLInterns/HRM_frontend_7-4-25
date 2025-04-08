@@ -16,10 +16,15 @@ import ProtectRoute from "../component/Auth/ProtectRoute";
 const RouterNavbar = () => {
   const { user, logoutUser, fetchUserProfile } = useApp();
 
+  useEffect(() => {
+    console.log("RouterNavbar mounted, current user:", user);
+  }, [user]);
+
   return (
     <div>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route
           path="/profile"
@@ -54,14 +59,7 @@ const RouterNavbar = () => {
             </ProtectRoute>
           }
         />
-        <Route
-          path="/masteradmin/*"
-          element={
-            <ProtectRoute>
-              <MasterAdmin />
-            </ProtectRoute>
-          }
-        />
+        <Route path="/masteradmin/*" element={<MasterAdmin />} />
         <Route
           path="/userdashboard/*"
           element={

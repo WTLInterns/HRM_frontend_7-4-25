@@ -77,7 +77,7 @@ export const AppProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate("/");
+    navigate("/login");
   };
 
   const fetchUserProfile = async () => {
@@ -235,6 +235,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider
       value={{
         user,
+        setUser,
         loginUser,
         saveUser,
         logoutUser,
