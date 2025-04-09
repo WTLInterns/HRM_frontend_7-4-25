@@ -598,79 +598,161 @@ export default function SalaryReport() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-md shadow-lg">
-      <h2 className="text-2xl font-bold text-center mb-6">Generate Salary Report</h2>
-      <div className="space-y-4">
-        <div className="flex flex-col">
-          <label htmlFor="employeeName" className="text-sm font-semibold mb-1">
-            Employee Name
-          </label>
-          <input
-            type="text"
-            id="employeeName"
-            value={employeeName}
-            onChange={(e) => setEmployeeName(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md"
-            placeholder="Enter Employee Name"
-          />
+    <div className="p-4 md:p-6 bg-slate-900 min-h-screen text-gray-100 animate-fadeIn">
+      <h1 className="text-2xl font-bold mb-6 text-blue-400">Salary Slip Generator</h1>
+      
+      {/* Form */}
+      <div className="mb-8 bg-slate-800 p-5 rounded-lg shadow-lg border border-slate-700">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="employeeName" className="text-sm font-semibold mb-1 text-gray-300">
+              Employee Name
+            </label>
+            <input
+              type="text"
+              id="employeeName"
+              value={employeeName}
+              onChange={(e) => setEmployeeName(e.target.value)}
+              className="w-full p-2 border border-slate-600 rounded-md bg-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter Employee Name"
+            />
+          </div>
+          <div>
+            <label htmlFor="startDate" className="text-sm font-semibold mb-1 text-gray-300">
+              Start Date
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border border-slate-600 rounded-md bg-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="endDate" className="text-sm font-semibold mb-1 text-gray-300">
+              End Date
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border border-slate-600 rounded-md bg-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
         </div>
-        <div className="flex flex-col">
-          <label htmlFor="startDate" className="text-sm font-semibold mb-1">
-            Start Date
-          </label>
-          <input
-            type="date"
-            id="startDate"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="endDate" className="text-sm font-semibold mb-1">
-            End Date
-          </label>
-          <input
-            type="date"
-            id="endDate"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="yearlyCTC" className="text-sm font-semibold mb-1">
-            Yearly CTC (₹)
-          </label>
-          <input
-            type="number"
-            id="yearlyCTC"
-            value={yearlyCTC}
-            onChange={(e) => setYearlyCTC(Number(e.target.value))}
-            className="p-2 border border-gray-300 rounded-md"
-            placeholder="Enter Yearly CTC"
-          />
-        </div>
-        <div className="text-center">
-          <button onClick={handleSubmit} className="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600">
-            Generate Report
+        <div className="mt-4 flex space-x-3">
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !employeeName || !startDate || !endDate}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-800 disabled:text-gray-300 disabled:cursor-not-allowed"
+          >
+            {loading ? "Processing..." : "Generate Report"}
           </button>
-        </div>
-        {loading && <div className="text-center text-gray-500">Loading...</div>}
-        {error && <div className="text-center text-red-500">{error}</div>}
-        <div className="mt-6">
+          
           {salaryReport && (
-            <div className="text-center mt-4">
-              <button
-                onClick={generateSalarySlipPDF}
-                className="bg-green-500 text-white py-2 px-6 rounded-md hover:bg-green-600"
-              >
-                Download Salary Slip (PDF)
-              </button>
-            </div>
+            <button
+              onClick={generateSalarySlipPDF}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            >
+              Download PDF
+            </button>
           )}
         </div>
+        {error && <div className="mt-3 text-red-500">{error}</div>}
       </div>
+
+      {/* Salary Preview */}
+      {salaryReport && (
+        <div className="bg-slate-800 p-5 rounded-lg shadow-lg border border-slate-700">
+          <h2 className="text-xl font-semibold mb-4 text-blue-400">Salary Report Preview</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-medium mb-2 text-gray-300">Employee Information</h3>
+              <div className="bg-slate-700 p-4 rounded-md">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-sm text-gray-400">Name</p>
+                    <p className="font-medium">
+                      {s?.firstName} {s?.lastName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Bank</p>
+                    <p className="font-medium">{s?.bankName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Account</p>
+                    <p className="font-medium">{s?.bankAccountNo}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">IFSC</p>
+                    <p className="font-medium">{s?.bankIfscCode}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-medium mb-2 text-gray-300">Attendance Summary</h3>
+              <div className="bg-slate-700 p-4 rounded-md">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-sm text-gray-400">Present Days</p>
+                    <p className="font-medium">{salaryReport.presentDays || "0"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Absent Days</p>
+                    <p className="font-medium">{salaryReport.absentDays || "0"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Half Days</p>
+                    <p className="font-medium">{salaryReport.halfDays || "0"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Off Days</p>
+                    <p className="font-medium">{salaryReport.totalOffDays || "0"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6">
+            <h3 className="text-lg font-medium mb-2 text-gray-300">Salary Details</h3>
+            <div className="bg-slate-700 p-4 rounded-md">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-400">Basic</p>
+                  <p className="font-medium">₹{Math.round(yearlyCTC / 12 * 0.5)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">HRA</p>
+                  <p className="font-medium">₹{Math.round(yearlyCTC / 12 * 0.2)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">DA</p>
+                  <p className="font-medium">₹{Math.round(yearlyCTC / 12 * 0.5 * 0.53)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Special Allowance</p>
+                  <p className="font-medium">₹{Math.round(yearlyCTC / 12 - (Math.round(yearlyCTC / 12 * 0.5) + Math.round(yearlyCTC / 12 * 0.2) + Math.round(yearlyCTC / 12 * 0.5 * 0.53)))}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Gross Salary</p>
+                  <p className="font-medium">₹{Math.round(yearlyCTC / 12)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Net Pay</p>
+                  <p className="font-medium text-lg text-green-400">₹{Math.round(salaryReport.finalSalary || 0)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

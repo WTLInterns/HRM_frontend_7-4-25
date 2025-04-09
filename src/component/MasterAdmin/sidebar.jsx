@@ -62,33 +62,40 @@ const Sidebar = () => {
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={cancelLogout}></div>
-          <div className="bg-slate-800 rounded-lg shadow-xl border border-orange-800 w-full max-w-md p-6 z-10 animate-scaleIn">
+          <div 
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300" 
+            onClick={cancelLogout}
+          ></div>
+          <div className="bg-slate-800 rounded-lg shadow-xl border border-orange-800 w-full max-w-md p-6 z-10 animate-scaleIn transform transition-all duration-300">
             <div className="flex items-center mb-4 text-orange-500">
-              <FaExclamationTriangle className="text-2xl mr-3" />
+              <FaExclamationTriangle className="text-2xl mr-3 animate-pulse" />
               <h3 className="text-xl font-semibold">Logout Confirmation</h3>
-              <button onClick={cancelLogout} className="ml-auto p-1 hover:bg-slate-700 rounded-full transition-colors">
+              <button 
+                onClick={cancelLogout} 
+                className="ml-auto p-1 hover:bg-slate-700 rounded-full transition-colors duration-200"
+              >
                 <FaTimes className="text-gray-400 hover:text-white" />
               </button>
             </div>
             
             <div className="mb-6">
-              <p className="mb-2">Are you sure you want to logout?</p>
+              <p className="mb-2 text-gray-200">Are you sure you want to logout?</p>
               <p className="text-gray-400 text-sm">Your session will be ended and you'll need to log in again to access the dashboard.</p>
             </div>
             
             <div className="flex space-x-3 justify-end">
               <button 
                 onClick={cancelLogout}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-md transition-colors"
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-md transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 Cancel
               </button>
               <button 
                 onClick={confirmLogout}
-                className="px-4 py-2 bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white rounded-md transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white rounded-md transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
               >
-                Logout
+                <FaSignOutAlt className="transform group-hover:translate-x-[-2px] transition-transform duration-300" />
+                <span>Logout</span>
               </button>
             </div>
           </div>
@@ -166,10 +173,10 @@ const Sidebar = () => {
       <div className="mt-auto p-4 border-t border-slate-700">
         <button
           onClick={handleLogoutClick}
-          className="w-full flex items-center gap-2 px-4 py-3 bg-red-800 hover:bg-red-700 text-white rounded-lg transition-all duration-300 btn-interactive"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-800 to-red-700 hover:from-red-700 hover:to-red-600 text-white rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] group"
         >
-          <FaSignOutAlt />
-          <span>Logout</span>
+          <FaSignOutAlt className="transform group-hover:translate-x-[-2px] transition-transform duration-300" />
+          <span className="font-medium">Logout</span>
         </button>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { FaEnvelope, FaLock, FaUser, FaBuilding, FaCheckCircle, FaTimes } from "
 import "../DashoBoard/animations.css";
 
 const Login = () => {
+  console.log("Login component rendering");
   const { loginUser, user, setUser } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,28 +20,44 @@ const Login = () => {
 
   // Clear form fields on initial load
   useEffect(() => {
+    console.log("Login component mounted");
     setEmail("");
     setPassword("");
   }, []);
 
   useEffect(() => {
+    console.log("User state changed in Login component:", user);
+    
     // Check for existing Master Admin login
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      if (parsedUser && parsedUser.role === "SUBADMIN") {
-        console.log("Found stored Master Admin user, redirecting...");
-        navigate("/masteradmin");
-        return;
+    try {
+      const storedUser = localStorage.getItem("user");
+      console.log("Stored user from localStorage:", storedUser);
+      
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        console.log("Parsed user from localStorage:", parsedUser);
+        
+        if (parsedUser && parsedUser.role === "SUBADMIN") {
+          console.log("Found stored Master Admin user, redirecting...");
+          navigate("/masteradmin");
+          return;
+        }
       }
-    }
 
-    if (user) {
-      if (user.role === "ADMIN") {
-        navigate("/dashboard");
+      if (user) {
+        console.log("User found in context, role:", user.role);
+        if (user.role === "ADMIN") {
+          console.log("Redirecting to /dashboard");
+          navigate("/dashboard");
+        } else {
+          console.log("Redirecting to /userDashboard");
+          navigate("/userDashboard");
+        }
       } else {
-        navigate("/userDashboard");
+        console.log("No user found in context");
       }
+    } catch (error) {
+      console.error("Error in Login useEffect:", error);
     }
   }, [user, navigate]);
 

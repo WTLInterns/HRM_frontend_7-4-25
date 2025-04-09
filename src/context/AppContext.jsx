@@ -11,20 +11,43 @@ export const useApp = () => {
 
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
+    try {
+      const storedUser = localStorage.getItem("user");
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error("Error parsing user from localStorage:", error);
+      // Clear the corrupted data
+      localStorage.removeItem("user");
+      return null;
+    }
   });
   const [authToken, setAuthToken] = useState(
     () => localStorage.getItem("token") || ""
   );
   const [emp, setEmp] = useState([]);
   const [role, setRole] = useState(user?.role || "");
+  const [loading, setLoading] = useState(true);
+  const [isProfitable, setIsProfitable] = useState(false);
+  const [companyBudget] = useState(1000000); // 10 lakh budget
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    activeEmployees: 0,
+    inactiveEmployees: 0,
+    totalSalary: 0,
+    activeSalary: 0,
+    inactiveSalary: 0,
+    profitLoss: 0
+  });
 
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
+      try {
+        localStorage.setItem("user", JSON.stringify(user));
+      } catch (error) {
+        console.error("Error storing user in localStorage:", error);
+      }
     } else {
       localStorage.removeItem("user");
     }
@@ -73,11 +96,14 @@ export const AppProvider = ({ children }) => {
   };
 
   const logoutUser = () => {
-    setAuthToken("");
+    // Clear user data
     setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
+    setEmp([]);
+    // Clear local storage
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    // Navigate to logout page
+    navigate('/logout');
   };
 
   const fetchUserProfile = async () => {
@@ -156,51 +182,200 @@ export const AppProvider = ({ children }) => {
   };
 
   const fetchAllEmp = async () => {
-    // More robust throttling & caching
-    // Static variable to track last call time and cached data
-    if (!fetchAllEmp.cache) {
-      fetchAllEmp.cache = { lastCall: 0, data: null, inProgress: false };
-    }
-    
-    // If we have data and it's been less than 5 seconds since last fetch, return cached data
-    const now = Date.now();
-    if (fetchAllEmp.cache.data && 
-        now - fetchAllEmp.cache.lastCall < 5000) {
-      console.log("Using cached employee data");
-      return fetchAllEmp.cache.data;
-    }
-    
-    // If a request is already in progress, don't start another
-    if (fetchAllEmp.cache.inProgress) {
-      console.log("Employee data fetch already in progress");
-      return;
-    }
-    
-    // Mark that a request is in progress
-    fetchAllEmp.cache.inProgress = true;
-    
     try {
-      console.log("Fetching employee data from API");
-      const response = await axios.get(
-        "http://localhost:8282/public/getAllEmp"
-      );
-      if (response.status === 200 && Array.isArray(response.data)) {
-        setEmp(response.data);
-        
-        // Update cache
-        fetchAllEmp.cache.data = response.data;
-        fetchAllEmp.cache.lastCall = now;
-        
-        return response.data;
-      } else {
-        console.error("Error: API response is not an array", response);
-      }
+      setLoading(true);
+      const response = await axios.get('http://localhost:8282/public/getAllEmp');
+      setEmp(response.data);
+      calculateStats(response.data);
     } catch (error) {
-      console.error("API Error while fetching Employee:", error);
-      throw error;
+      console.error('Error fetching employees:', error);
     } finally {
-      // Clear in-progress flag regardless of success or failure
-      fetchAllEmp.cache.inProgress = false;
+      setLoading(false);
+    }
+  };
+
+  const calculateStats = (employees) => {
+    try {
+      const activeEmployees = employees.filter(employee => employee.status === "active");
+      const inactiveEmployees = employees.filter(employee => employee.status === "inactive");
+      
+      const activeSalary = activeEmployees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
+      const inactiveSalary = inactiveEmployees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
+      const totalSalary = activeSalary + inactiveSalary;
+      
+      const profitLoss = companyBudget - totalSalary;
+      const profitable = profitLoss > 0;
+      setIsProfitable(profitable);
+      
+      setStats({
+        totalEmployees: employees.length,
+        activeEmployees: activeEmployees.length,
+        inactiveEmployees: inactiveEmployees.length,
+        totalSalary,
+        activeSalary,
+        inactiveSalary,
+        profitLoss
+      });
+    } catch (error) {
+      console.error("Error calculating stats:", error);
+    }
+  };
+
+  // Prepare pie chart data
+  const pieChartData = {
+    labels: ['Active Salary', 'Inactive Salary'],
+    datasets: [
+      {
+        data: [stats.activeSalary, stats.inactiveSalary],
+        backgroundColor: [
+          'rgba(56, 189, 248, 0.85)',   // Sky blue for active
+          'rgba(251, 113, 133, 0.85)',  // Modern pink for inactive
+        ],
+        borderColor: [
+          'rgba(56, 189, 248, 1)',
+          'rgba(251, 113, 133, 1)',
+        ],
+        borderWidth: 0,
+        hoverBackgroundColor: [
+          'rgba(56, 189, 248, 1)',
+          'rgba(251, 113, 133, 1)',
+        ],
+        hoverBorderColor: '#ffffff',
+        hoverBorderWidth: 2,
+        borderRadius: 6,
+        spacing: 8,
+        offset: 6,
+      },
+    ],
+  };
+
+  // Define yearlyData which was missing
+  const yearlyData = [
+    { year: '2020', profit: 80000, loss: 20000 },
+    { year: '2021', profit: 90000, loss: 15000 },
+    { year: '2022', profit: 120000, loss: 25000 },
+    { year: '2023', profit: 150000, loss: 30000 },
+    { year: '2024', profit: 200000, loss: 40000 },
+  ];
+
+  // Prepare bar chart data
+  const barChartData = {
+    labels: yearlyData.map(item => item.year),
+    datasets: [
+      {
+        label: 'Profit',
+        data: yearlyData.map(item => item.profit),
+        backgroundColor: 'rgba(56, 189, 248, 0.85)',
+        borderColor: 'rgba(56, 189, 248, 1)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Loss',
+        data: yearlyData.map(item => item.loss),
+        backgroundColor: 'rgba(251, 113, 133, 0.85)',
+        borderColor: 'rgba(251, 113, 133, 1)',
+        borderWidth: 1,
+      }
+    ],
+  };
+
+  // Chart options
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    radius: '85%',
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleFont: {
+          size: 16,
+          weight: 'bold'
+        },
+        bodyFont: {
+          size: 14
+        },
+        padding: 15,
+        cornerRadius: 8,
+        caretSize: 0,
+        borderColor: '#475569',
+        borderWidth: 0,
+        displayColors: false,
+        callbacks: {
+          label: (context) => {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+            const percentage = Math.round((value / total) * 100);
+            return `${label}: ₹${value.toLocaleString()} (${percentage}%)`;
+          },
+          labelTextColor: () => '#ffffff'
+        }
+      }
+    },
+    animation: {
+      animateRotate: true,
+      animateScale: true,
+      duration: 1500,
+      easing: 'easeOutCirc',
+      delay: (context) => context.dataIndex * 200
+    },
+    elements: {
+      arc: {
+        borderWidth: 0
+      }
+    }
+  };
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: '#ffffff',
+          font: {
+            size: 12
+          }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#475569',
+        borderWidth: 1,
+        padding: 10,
+        callbacks: {
+          label: (context) => {
+            return `${context.dataset.label}: ₹${context.raw.toLocaleString()}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+        ticks: {
+          color: '#ffffff'
+        }
+      },
+      y: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+        ticks: {
+          color: '#ffffff',
+          callback: (value) => `₹${value.toLocaleString()}`
+        }
+      }
     }
   };
 
@@ -231,24 +406,41 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  useEffect(() => {
+    fetchAllEmp();
+  }, []);
+
+  const value = {
+    user,
+    setUser,
+    authToken,
+    setAuthToken,
+    emp,
+    setEmp,
+    role,
+    setRole,
+    loading,
+    setLoading,
+    isProfitable,
+    stats,
+    companyBudget,
+    loginUser,
+    logoutUser,
+    fetchUserProfile,
+    forgotPassword,
+    addEmp,
+    createAttendance,
+    fetchAllEmp,
+    deleteEmployee,
+    updateEmployee,
+    pieChartData,
+    barChartData,
+    chartOptions,
+    barChartOptions
+  };
+
   return (
-    <AppContext.Provider
-      value={{
-        user,
-        setUser,
-        loginUser,
-        saveUser,
-        logoutUser,
-        fetchUserProfile,
-        forgotPassword,
-        addEmp,
-        createAttendance,
-        fetchAllEmp,
-        emp,
-        deleteEmployee,
-        updateEmployee,
-      }}
-    >
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );

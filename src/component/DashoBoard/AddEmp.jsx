@@ -272,137 +272,104 @@ export default function AddEmp() {
   };
 
   return (
-    <div className="p-3 sm:p-6 bg-gray-100 min-h-screen">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="text-2xl font-bold mb-4 md:mb-0">Employee Management</h1>
+    <div className="p-4 min-h-screen bg-slate-900 text-gray-100">
+      {/* Page heading and add employee button */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold text-blue-400">Employee Management</h1>
         <button
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center gap-2"
           onClick={handleModalToggle}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors"
         >
-          Add New Employee
+          <span>Add Employee</span>
         </button>
       </div>
 
-      {/* Search and Pagination Controls */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-          <div className="w-full sm:w-64 mb-4 sm:mb-0">
+      {/* Search */}
+      <div className="mb-6 p-4 bg-slate-800 rounded-lg shadow-md border border-slate-700">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search by name or email..."
-              className="w-full p-2 border border-gray-300 rounded-lg"
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset to first page on new search
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100 placeholder-gray-400"
             />
           </div>
-          <div className="flex items-center space-x-2">
+          {searchTerm && (
             <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-lg ${
-                currentPage === 1
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-              }`}
+              onClick={() => setSearchTerm("")}
+              className="bg-slate-700 text-gray-300 hover:text-white p-2 rounded-md transition-colors"
             >
-              <FaChevronLeft />
+              <FaTimes />
             </button>
-            <span className="text-sm">
-              Page {currentPage} of {Math.max(1, totalPages)}
-            </span>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages || totalPages === 0}
-              className={`p-2 rounded-lg ${
-                currentPage === totalPages || totalPages === 0
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-              }`}
-            >
-              <FaChevronRight />
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Employee List - Responsive Table */}
+      {/* Employee Table - Desktop View */}
+      <div className="hidden md:block mb-6 overflow-x-auto bg-slate-800 rounded-lg shadow-md border border-slate-700">
       {currentEmployees.length > 0 ? (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Desktop View */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border-collapse">
+          <table className="min-w-full divide-y divide-slate-700">
               <thead>
-                <tr className="bg-gray-100 text-left">
-                  <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <tr className="bg-slate-700">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Job Role
                   </th>
-                  <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-700">
                 {currentEmployees.map((employee) => (
-                  <tr key={employee.empId} className="hover:bg-gray-50">
+                <tr key={employee.empId} className="hover:bg-slate-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-100">
                             {employee.firstName} {employee.lastName}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{employee.email}</div>
+                    <div className="text-sm text-gray-300">{employee.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{employee.phone}</div>
+                    <div className="text-sm text-gray-300">{employee.jobRole}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{employee.jobRole}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          employee.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      employee.status === "active" ? "bg-green-800 text-green-100" : "bg-red-800 text-red-100"
+                    }`}>
                         {employee.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex space-x-2 justify-end">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
                         <button
                           onClick={() => handleEditEmp(employee)}
-                          className="text-indigo-600 hover:text-indigo-900"
+                        className="text-blue-400 hover:text-blue-300 transition-colors"
+                        title="Edit"
                         >
-                          <CiEdit className="text-xl" />
+                        <CiEdit size={20} />
                         </button>
                         <button
                           onClick={() => handleDeleteEmp(employee.empId)}
-                          className="text-red-600 hover:text-red-900"
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                        title="Delete"
                         >
-                          <MdDeleteOutline className="text-xl" />
+                        <MdDeleteOutline size={20} />
                         </button>
                       </div>
                     </td>
@@ -410,67 +377,118 @@ export default function AddEmp() {
                 ))}
               </tbody>
             </table>
+        ) : (
+          <div className="text-center py-4 text-gray-400">
+            {searchTerm ? "No employees match your search criteria" : "No employees found"}
+          </div>
+        )}
           </div>
 
-          {/* Mobile View - Cards */}
-          <div className="md:hidden">
-            {currentEmployees.map((employee) => (
-              <div
-                key={employee.empId}
-                className="border-b border-gray-200 last:border-b-0"
-              >
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
+      {/* Employee Cards - Mobile View */}
+      <div className="md:hidden grid grid-cols-1 gap-4 mb-6">
+        {currentEmployees.length > 0 ? (
+          currentEmployees.map((employee) => (
+            <div key={employee.empId} className="bg-slate-800 rounded-lg p-4 shadow border border-slate-700">
+              <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="text-sm font-medium">
-                        {employee.firstName} {employee.lastName}
-                      </h3>
-                      <p className="text-xs text-gray-500">{employee.email}</p>
+                  <h3 className="font-medium text-white">{employee.firstName} {employee.lastName}</h3>
+                  <p className="text-sm text-gray-300 mt-1">{employee.email}</p>
+                  <div className="flex mt-2 items-center">
+                    <span className="text-sm text-gray-400 mr-2">Role:</span>
+                    <span className="text-sm text-gray-300">{employee.jobRole}</span>
                     </div>
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        employee.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
+                  <div className="mt-1 flex items-center">
+                    <span className="text-sm text-gray-400 mr-2">Status:</span>
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${
+                      employee.status === "active" ? "bg-green-800 text-green-100" : "bg-red-800 text-red-100"
+                    }`}>
                       {employee.status}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs mb-3">
-                    <div>
-                      <span className="text-gray-500">Phone:</span> {employee.phone}
                     </div>
-                    <div>
-                      <span className="text-gray-500">Job:</span> {employee.jobRole}
-                    </div>
-                  </div>
-                  <div className="flex justify-end space-x-3">
+                <div className="flex flex-col space-y-2">
                     <button
                       onClick={() => handleEditEmp(employee)}
-                      className="p-2 text-indigo-600 hover:text-indigo-900"
+                    className="p-2 bg-blue-900 text-blue-300 rounded-md"
                     >
-                      <CiEdit className="text-xl" />
+                    <CiEdit size={18} />
                     </button>
                     <button
                       onClick={() => handleDeleteEmp(employee.empId)}
-                      className="p-2 text-red-600 hover:text-red-900"
+                    className="p-2 bg-red-900 text-red-300 rounded-md"
                     >
-                      <MdDeleteOutline className="text-xl" />
+                    <MdDeleteOutline size={18} />
                     </button>
                   </div>
                 </div>
               </div>
-            ))}
+          ))
+        ) : (
+          <div className="text-center py-4 text-gray-400">
+            {searchTerm ? "No employees match your search criteria" : "No employees found"}
           </div>
+        )}
         </div>
-      ) : (
-        <div className="bg-white p-8 text-center rounded-lg shadow-md">
-          <p className="text-gray-500">
-            {emp.length === 0
-              ? "No employees found. Add your first employee!"
-              : "No employees match your search criteria."}
-          </p>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center py-3 px-4 bg-slate-800 rounded-lg shadow-md border border-slate-700">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md bg-slate-700 text-gray-300 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md bg-slate-700 text-gray-300 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-400">
+                Showing <span className="font-medium">{Math.min(1 + (currentPage - 1) * employeesPerPage, filteredEmployees.length)}</span> to{' '}
+                <span className="font-medium">{Math.min(currentPage * employeesPerPage, filteredEmployees.length)}</span> of{' '}
+                <span className="font-medium">{filteredEmployees.length}</span> results
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FaChevronLeft className="h-5 w-5" />
+                </button>
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`relative inline-flex items-center px-4 py-2 border ${
+                      currentPage === i + 1
+                        ? 'bg-blue-700 text-white border-blue-600'
+                        : 'bg-slate-700 text-gray-300 border-slate-600 hover:bg-slate-600'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FaChevronRight className="h-5 w-5" />
+                </button>
+              </nav>
+            </div>
+          </div>
         </div>
       )}
 
@@ -479,28 +497,22 @@ export default function AddEmp() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+              <div className="absolute inset-0 bg-gray-900 opacity-75"></div>
             </div>
-
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen"></span>&#8203;
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full md:max-w-2xl">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="inline-block align-bottom bg-slate-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-slate-600">
+              <div className="bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium leading-6 text-gray-900">
-                    Add New Employee
-                  </h3>
+                  <h3 className="text-lg leading-6 font-medium text-blue-400">Add New Employee</h3>
                   <button
                     onClick={handleModalToggle}
-                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                    className="text-gray-400 hover:text-white"
                   >
                     <FaTimes />
                   </button>
                 </div>
-
-                <form onSubmit={handleAddEmp} className="overflow-y-auto max-h-[70vh]">
+                <form onSubmit={handleAddEmp} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Form fields go here - keep these responsive */}
                     <div className="space-y-2">
                       <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
                         First Name:
@@ -800,20 +812,25 @@ export default function AddEmp() {
 
       {/* Update Employee Modal */}
       {updateModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-auto relative">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity">
+              <div className="absolute inset-0 bg-gray-900 opacity-75"></div>
+            </div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen"></span>&#8203;
+            <div className="inline-block align-bottom bg-slate-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-slate-600">
+              <div className="bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg leading-6 font-medium text-blue-400">Update Employee Information</h3>
             <button
               onClick={handleUpdateModalToggle}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                    className="text-gray-400 hover:text-white"
             >
-              <FaTimes size={20} />
+                    <FaTimes />
             </button>
-            <h2 className="text-xl font-bold mb-4">Update Employee</h2>
-            <form
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              onSubmit={handleUpdateEmp}
-            >
-              {/* Pre-populated update form fields – include all fields */}
+                </div>
+                <form onSubmit={handleUpdateEmp} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="firstNameUpd" className="block text-sm font-medium text-gray-700" >
                   First Name:
@@ -1070,6 +1087,7 @@ export default function AddEmp() {
                   placeholder="Branch Name"
                   className="block w-full px-4 py-2 border border-gray-300 rounded-md"
                 />
+                    </div>
               </div>
               <div className="md:col-span-2 flex justify-center space-x-4">
                 <button type="submit" className="px-4 py-2 bg-green-500 text-white rounded-md">
@@ -1084,6 +1102,8 @@ export default function AddEmp() {
                 </button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
         </div>
       )}

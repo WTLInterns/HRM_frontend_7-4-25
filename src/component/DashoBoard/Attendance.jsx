@@ -1,313 +1,368 @@
 import React, { useState, useEffect } from "react";
+import "./animations.css";
+import { FaCheckCircle, FaTimes, FaCalendarAlt } from "react-icons/fa";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
+import "./calendar-custom.css";
 
 export default function Attendance() {
-  // -----------------------------------
-  // 1) Component States
-  // -----------------------------------
+  // Component States
   const [employeeName, setEmployeeName] = useState("");
-  const [status, setStatus] = useState("Present");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDates, setSelectedDates] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [error, setError] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
 
-  const [filteredRecords, setFilteredRecords] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1); // For pagination
-  const recordsPerPage = 5; // Number of records per page
-  const [searchQuery, setSearchQuery] = useState("");
+  // Status options for the dropdown
+  const statusOptions = [
+    "Present",
+    "Absent",
+    "Half-Day",
+    "Paid Leave",
+    "Week Off",
+    "Holiday"
+  ];
 
-  // Define color classes for each status
-  const statusColors = {
-    Present: "text-green-600 font-semibold",
-    Absent: "text-red-600 font-semibold",
-    "Half-Day": "text-yellow-600 font-semibold",
-    "Paid Leave": "text-purple-600 font-semibold",
-    "Week Off": "text-blue-600 font-semibold",
-    Holiday: "text-pink-600 font-semibold",
+  // Initialize attendance records for selected dates
+  useEffect(() => {
+    // Only initialize new dates, don't overwrite existing ones
+    const existingDates = attendanceRecords.map(r => r.date);
+    const newDates = selectedDates.filter(date => !existingDates.includes(date));
+    
+    if (newDates.length > 0) {
+      const newRecords = newDates.map(date => ({
+        date,
+        status: "Present", // Default status
+        employeeName: employeeName || "",
+      }));
+      
+      setAttendanceRecords(prev => [...prev, ...newRecords]);
+    }
+  }, [selectedDates, employeeName]);
+
+  // Format date to dd-mm-yyyy
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
   };
 
-  // -----------------------------------
-  // 2) Form Submission (Mark Attendance)
-  // -----------------------------------
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newRecord = {
-      employee: { firstName: employeeName },
-      date: selectedDate.toISOString().split("T")[0],
-      status: status,
-    };
-
-    fetch("http://localhost:8282/public/att", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newRecord),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to mark attendance");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        alert("Attendance marked successfully!");
-        setEmployeeName("");
-        setStatus("Present");
-        setSelectedDate(new Date());
-        setFilteredRecords([]);
-      })
-      .catch((error) => {
-        console.error("Error marking attendance:", error);
-        setError("Error marking attendance");
+  // Handle calendar tile click
+  const handleTileClick = ({ date, view }, event) => {
+    if (view === 'month') {
+      // Get the exact date that was clicked with no time component
+      const clickedDate = new Date(date);
+      clickedDate.setHours(12, 0, 0, 0);
+      const dateStr = clickedDate.toISOString().split('T')[0];
+      
+      // Store the clicked date cell's position for reference
+      const rect = event.currentTarget.getBoundingClientRect();
+      const calendarRect = event.currentTarget.closest('.react-calendar').getBoundingClientRect();
+      
+      // Calculate position relative to the calendar
+      setDropdownPosition({
+        x: rect.left - calendarRect.left + (rect.width / 2),
+        y: rect.top - calendarRect.top + (rect.height / 2)
       });
+      
+      setSelectedDate(dateStr);
+      setShowStatusDropdown(true);
+    }
   };
 
-  // -----------------------------------
-  // 3) "Show Details" (Search by Employee First Name)
-  // -----------------------------------
-  const handleShowDetails = () => {
-    const query = searchQuery.trim();
-    if (!query) {
-      setFilteredRecords([]);
+  // Close the dropdown
+  const handleCloseDropdown = () => {
+    setShowStatusDropdown(false);
+  };
+
+  // Handle status selection
+  const handleStatusSelect = (status) => {
+    const dateStr = selectedDate;
+    console.log("Setting status for date:", dateStr, "Status:", status);
+    
+    if (!selectedDates.includes(dateStr)) {
+      // Add new date with the selected status
+      setSelectedDates(prev => [...prev, dateStr]);
+      setAttendanceRecords(prev => [
+        ...prev,
+        {
+          date: dateStr,
+          status: status, // Use the selected status, not the default
+          employeeName: employeeName || "",
+        }
+      ]);
+    } else {
+      // Update existing date with new status
+      setAttendanceRecords(prev => 
+        prev.map(record => 
+          record.date === dateStr 
+            ? { ...record, status: status }
+            : record
+        )
+      );
+    }
+    setShowStatusDropdown(false);
+  };
+
+  // Remove a date from selection
+  const handleRemoveDate = (dateToRemove) => {
+    setSelectedDates(selectedDates.filter(date => date !== dateToRemove));
+    setAttendanceRecords(attendanceRecords.filter(record => record.date !== dateToRemove));
+  };
+
+  // Clear all selected dates and reset form
+  const handleCancelAll = () => {
+    setSelectedDates([]);
+    setAttendanceRecords([]);
+  };
+
+  // Validate form before submission
+  const validateForm = () => {
+    if (!employeeName || employeeName.trim() === "") {
+      setError("Please enter employee name");
+      return false;
+    }
+    if (selectedDates.length === 0) {
+      setError("Please select at least one date");
+      return false;
+    }
+    return true;
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
       return;
     }
 
-    fetch(`http://localhost:8282/public/getAttendanceByName/${query}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to fetch attendance by name");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setFilteredRecords(data);
-      })
-      .catch((error) => {
-        console.error("Error fetching attendance by name:", error);
-        setError("Error fetching attendance by name");
-      });
-  };
+    try {
+      // Store the count of selected dates before clearing them
+      const selectedDatesCount = selectedDates.length;
+      
+      // Update employee name in all records
+      const updatedRecords = attendanceRecords.map(record => ({
+        ...record,
+        employeeName: employeeName
+      }));
 
-  // -----------------------------------
-  // 4) "Reset" button
-  // -----------------------------------
-  const handleReset = () => {
-    setSearchQuery("");
-    setFilteredRecords([]);
-  };
-
-  // -----------------------------------
-  // 5) Update Status Dynamically
-  // -----------------------------------
-  const updateStatus = (empId, date, recordId, newStatus) => {
-    fetch(
-      `http://localhost:8282/public/updateAttendanceStatusByEmpAndDate/${empId}/${date}/${encodeURIComponent(newStatus)}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-      }
-    )
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to update status");
-        }
-        return response.json();
-      })
-      .then((updatedRecord) => {
-        setFilteredRecords((prev) =>
-          prev.map((rec) =>
-            rec.id === recordId ? { ...rec, status: updatedRecord.status } : rec
-          )
+      // Submit each attendance record
+      const submissionPromises = updatedRecords
+        .filter(record => selectedDates.includes(record.date))
+        .map(record => 
+          fetch("http://localhost:8282/public/att", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              employee: { firstName: employeeName },
+              date: record.date,
+              status: record.status,
+            }),
+          })
         );
-      })
-      .catch((error) => {
-        console.error("Error updating attendance:", error);
-        setError("Error updating attendance");
-      });
-  };
 
-  // -----------------------------------
-  // 6) Pagination Logic
-  // -----------------------------------
-  const paginate = (records, currentPage, recordsPerPage) => {
-    const startIndex = (currentPage - 1) * recordsPerPage;
-    const endIndex = startIndex + recordsPerPage;
-    return records.slice(startIndex, endIndex);
-  };
-
-  const handleNextPage = () => {
-    if (currentPage * recordsPerPage < filteredRecords.length) {
-      setCurrentPage(currentPage + 1);
+      await Promise.all(submissionPromises);
+      
+      // Show success modal with correct count
+      setShowSuccessModal(true);
+      // Store the count to display in the success modal
+      localStorage.setItem('submittedDatesCount', selectedDatesCount.toString());
+      
+      // Clear form fields
+      setEmployeeName("");
+      setSelectedDates([]);
+      setAttendanceRecords([]);
+      setShowCalendar(false);
+      
+    } catch (error) {
+      console.error("Error marking attendance:", error);
+      setError("Error marking attendance");
     }
   };
 
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+  // Define color classes for each status
+  const statusColors = {
+    Present: "bg-green-900/30 border-green-700",
+    Absent: "bg-red-900/30 border-red-700",
+    "Half-Day": "bg-yellow-900/30 border-yellow-700",
+    "Paid Leave": "bg-purple-900/30 border-purple-700",
+    "Week Off": "bg-blue-900/30 border-blue-700",
+    Holiday: "bg-pink-900/30 border-pink-700",
   };
 
-  // -----------------------------------
-  // 7) Rendering the Component
-  // -----------------------------------
+  // Custom tile content with improved visual feedback
+  const tileContent = ({ date, view }) => {
+    if (view === 'month') {
+      // Create a date object with year, month, day only (no time)
+      const clickedDate = new Date(date);
+      clickedDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+      const dateStr = clickedDate.toISOString().split('T')[0];
+      const record = attendanceRecords.find(r => r.date === dateStr);
+      
+      if (record) {
+        return (
+          <div className={`w-full h-full p-1 ${statusColors[record.status]}`}>
+            <div className="text-xs font-bold">{record.status}</div>
+          </div>
+        );
+      }
+    }
+    return null;
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-gray-50">
+    <div className="max-w-6xl mx-auto p-6 animate-fadeIn">
       {error && (
-        <div className="bg-red-500 text-white p-3 mb-4 rounded">{error}</div>
+        <div className="bg-red-500 text-white p-3 mb-4 rounded animate-shake">{error}</div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowSuccessModal(false)}></div>
+          <div className="bg-slate-800 rounded-lg shadow-xl border border-green-800 w-full max-w-md p-6 z-10 animate-scaleIn">
+            <div className="flex items-center mb-4 text-green-500">
+              <FaCheckCircle className="text-2xl mr-3 animate-pulse" />
+              <h3 className="text-xl font-semibold">Attendance Marked Successfully</h3>
+            </div>
+            <div className="mb-6">
+              <p className="text-gray-200">Attendance has been marked for {localStorage.getItem('submittedDatesCount') || 0} day(s)</p>
+            </div>
+              <button 
+                onClick={() => setShowSuccessModal(false)}
+              className="w-full py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all duration-300"
+              >
+                OK
+              </button>
+          </div>
+        </div>
       )}
 
       {/* Mark Attendance Form */}
-      <div className="w-full max-w-md mx-auto p-4 bg-gray-100 shadow-md rounded-lg mb-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Mark Attendance</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Employee Name */}
-          <div className="space-y-2">
-            <label htmlFor="employeeName" className="block text-sm font-medium text-gray-700">
-              Employee Name
-            </label>
-            <input
-              type="text"
-              id="employeeName"
-              className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-              value={employeeName}
-              onChange={(e) => setEmployeeName(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Date */}
-          <div className="space-y-2">
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-              Date
-            </label>
-            <input
-              id="date"
-              type="date"
-              className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-              value={selectedDate.toISOString().split("T")[0]}
-              onChange={(e) => setSelectedDate(new Date(e.target.value))}
-            />
-          </div>
-
-          {/* Status */}
-          <div className="space-y-2">
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-              Status
-            </label>
-            <select
-              id="status"
-              className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="Present">Present</option>
-              <option value="Absent">Absent</option>
-              <option value="Half-Day">Half-Day</option>
-              <option value="Paid Leave">Paid Leave</option>
-              <option value="Week Off">Week Off</option>
-              <option value="Holiday">Holiday</option>
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition text-sm"
-          >
-            Submit Attendance
-          </button>
-        </form>
-      </div>
-
-      {/* Attendance Records */}
-      <div className="w-full p-6 bg-gray-100 shadow-md rounded-lg">
-        <h2 className="text-3xl font-semibold mb-6 text-gray-800">Attendance Records</h2>
-
-        {/* Search Box */}
-        <div className="mb-4 flex items-center space-x-4">
-          <input
-            type="text"
-            className="p-2 border border-gray-300 rounded-lg w-full text-sm"
-            placeholder="Search by employee name"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button
-            onClick={handleShowDetails}
-            className="py-2 px-4 bg-blue-600 text-white rounded-lg text-sm"
-          >
-            Show Details
-          </button>
-          {(filteredRecords.length > 0 || searchQuery) && (
-            <button
-              onClick={handleReset}
-              className="py-2 px-4 bg-gray-600 text-white rounded-lg text-sm"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-
-        {/* Attendance Records Table */}
-        {filteredRecords.length > 0 ? (
-          <>
-            <table className="w-full table-auto border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-gray-200 text-lg">
-                  <th className="border p-4">Sr. No</th>
-                  <th className="border p-4">Employee Name</th>
-                  <th className="border p-4">Date</th>
-                  <th className="border p-4">Status</th>
-                  <th className="border p-4">Change Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginate(filteredRecords, currentPage, recordsPerPage).map((record, index) => (
-                  <tr key={record.id || index} className="hover:bg-gray-100">
-                    <td className="border p-4">{(currentPage - 1) * recordsPerPage + index + 1}</td>
-                    <td className="border p-4">{record.employee?.firstName || "N/A"}</td>
-                    <td className="border p-4">{record.date}</td>
-                    <td className={`border p-4 ${statusColors[record.status] || ""}`}>
-                      {record.status}
-                    </td>
-                    <td className="border p-4">
-                      <select
-                        value={record.status}
-                        onChange={(e) =>
-                          updateStatus(record.employee?.empId, record.date, record.id, e.target.value)
-                        }
-                        className="border p-2 rounded-lg text-sm"
-                      >
-                        <option value="Present">Present</option>
-                        <option value="Absent">Absent</option>
-                        <option value="Half-Day">Half-Day</option>
-                        <option value="Paid Leave">Paid Leave</option>
-                        <option value="Week Off">Week Off</option>
-                        <option value="Holiday">Holiday</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Pagination */}
-            <div className="mt-4 flex justify-between">
-              <button
-                onClick={handlePrevPage}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm"
-              >
-                Previous
-              </button>
-              <button
-                onClick={handleNextPage}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm"
-              >
-                Next
-              </button>
+      <div className="w-full bg-slate-800 shadow-lg rounded-lg mb-8 border border-blue-900 animate-slideIn">
+        <div className="p-6">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-100">Mark Attendance</h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Employee Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">
+                Employee Name
+              </label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-700 rounded-lg bg-slate-700 text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={employeeName}
+                onChange={(e) => setEmployeeName(e.target.value)}
+                required
+              />
             </div>
-          </>
-        ) : (
-          <div className="text-center p-6 text-lg text-gray-500">
-            No attendance records to display. Please use the search above.
-          </div>
-        )}
+
+            {/* Calendar */}
+            <div className="relative">
+              <Calendar
+                onClickDay={(value, event) => handleTileClick({ date: value, view: 'month' }, event)}
+                value={null}
+                tileContent={tileContent}
+                className="bg-slate-800 text-gray-100 border-gray-700 rounded-lg w-full"
+                showNeighboringMonth={false}
+              />
+
+              {/* Status Dropdown - Now positioned over the date cell */}
+              {showStatusDropdown && (
+                <div 
+                  className="absolute z-50 bg-slate-700 rounded-lg shadow-xl border border-gray-600"
+                  style={{
+                    top: `${dropdownPosition.y}px`,
+                    left: `${dropdownPosition.x}px`,
+                    transform: 'translate(-50%, -50%)',
+                    width: '180px'
+                  }}
+                >
+                  <div className="p-2 border-b border-gray-600 text-center font-medium text-gray-300">
+                    {formatDate(selectedDate)}
+                  </div>
+                  {statusOptions.map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      className={`block w-full text-left px-4 py-2 hover:bg-slate-600 text-gray-100 ${
+                        attendanceRecords.find(r => r.date === selectedDate)?.status === status
+                          ? 'bg-blue-600'
+                          : ''
+                      }`}
+                      onClick={() => handleStatusSelect(status)}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                  <div className="p-2 border-t border-gray-600">
+                    <button
+                      type="button"
+                      onClick={handleCloseDropdown}
+                      className="w-full py-1 bg-gray-600 text-white rounded hover:bg-gray-500 transition flex items-center justify-center gap-1"
+                    >
+                      <FaTimes className="text-xs" /> Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Selected Dates Summary */}
+            {selectedDates.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-lg font-medium text-gray-200 mb-2">Selected Dates</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedDates.map(date => {
+                    const record = attendanceRecords.find(r => r.date === date);
+                    return (
+                      <div 
+                        key={date}
+                        className={`px-3 py-1 rounded-full flex items-center gap-2 ${statusColors[record?.status]}`}
+                      >
+                        <span>{formatDate(date)}</span>
+                        <span className="font-medium">{record?.status}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDate(date)}
+                          className="text-gray-400 hover:text-red-400"
+                        >
+                          <FaTimes />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Submit and Cancel Buttons */}
+            {selectedDates.length > 0 && (
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-lg"
+                >
+                  <FaCheckCircle /> Submit Attendance
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelAll}
+                  className="flex-1 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition flex items-center justify-center gap-2 text-lg"
+                >
+                  <FaTimes /> Cancel All
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
       </div>
     </div>
   );
