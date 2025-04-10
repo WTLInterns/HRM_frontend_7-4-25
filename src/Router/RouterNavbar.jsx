@@ -1,10 +1,11 @@
 import React, { useEffect } from "react";
-import { Route, Routes, Navigate } from "react-router-dom";
+import { Route, Routes, Navigate, useLocation } from "react-router-dom";
 
 import Login from "../component/Auth/Login";
 import SignUp from "../component/Auth/SignUp";
 import Profile from "../component/Auth/Profile";
 import ResetPassword from "../component/Auth/ResetPassword";
+import ForgotPassword from "../component/Auth/ForgotPassword";
 import Salary from "../component/Auth/Salaray";
 import EmployeeSearch from "../component/Auth/EmployeeSearch";
 import Dashboard from "../component/DashoBoard/DashBoard";
@@ -31,10 +32,14 @@ const FallbackComponent = () => (
 const RouterNavbar = () => {
   console.log("RouterNavbar component rendering");
   const { user, logoutUser, fetchUserProfile } = useApp();
+  const location = useLocation();
 
   useEffect(() => {
-    console.log("RouterNavbar mounted, current user:", user);
-  }, [user]);
+    console.log("RouterNavbar - Current path:", location.pathname);
+    console.log("RouterNavbar - Current user:", user);
+    console.log("RouterNavbar - localStorage user:", localStorage.getItem("user"));
+    console.log("RouterNavbar - localStorage token:", !!localStorage.getItem("token"));
+  }, [location, user]);
 
   return (
     <div>
@@ -52,6 +57,8 @@ const RouterNavbar = () => {
           }
         />
         <Route path="/reset" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/salary"
           element={
@@ -68,15 +75,15 @@ const RouterNavbar = () => {
             </ProtectRoute>
           }
         />
-        <Route
-          path="/dashboard/*"
-          element={
-            <ProtectRoute>
-              <Dashboard />
-            </ProtectRoute>
-          }
-        />
-        <Route path="/masteradmin/*" element={<MasterAdmin />} />
+        {/* Make dashboard route more permissive temporarily */}
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard/*" element={<Dashboard />} />
+        
+        <Route path="/masteradmin/*" element={
+          <ProtectRoute>
+            <MasterAdmin />
+          </ProtectRoute>
+        } />
         <Route
           path="/userdashboard/*"
           element={

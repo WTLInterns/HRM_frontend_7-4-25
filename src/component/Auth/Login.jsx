@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ClipLoader } from "react-spinners";
-import { FaEnvelope, FaLock, FaUser, FaBuilding, FaCheckCircle, FaTimes } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaUser, FaBuilding, FaCheckCircle, FaTimes, FaEye, FaEyeSlash } from "react-icons/fa";
 import "../DashoBoard/animations.css";
+import axios from "axios";
 
 const Login = () => {
   console.log("Login component rendering");
@@ -16,50 +17,121 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [fromLogout, setFromLogout] = useState(false);
 
-  // Clear form fields on initial load
+  // Clear form fields on initial load and check if coming from logout
   useEffect(() => {
-    console.log("Login component mounted");
+    console.log("Login component mounted, location state:", location.state);
     setEmail("");
     setPassword("");
-  }, []);
-
-  useEffect(() => {
-    console.log("User state changed in Login component:", user);
     
-    // Check for existing Master Admin login
+    // Check if coming from logout page
+    if (location.state && location.state.fromLogout) {
+      console.log("Coming from logout page, preventing auto-redirect");
+      console.log("fromLogout state detected in location:", location.state.fromLogout);
+      setFromLogout(true);
+      
+      // Clear any localStorage remainders to ensure clean login state
+      console.log("Clearing localStorage items due to logout redirect");
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      
+      // Additional clean up for any other items if needed
+      // localStorage.removeItem("otherItem");
+    } else {
+      console.log("Not coming from logout page, fromLogout set to false");
+      // Only reset fromLogout if we're not coming from logout page
+      // This ensures the flag persists through rerenders when needed
+      setFromLogout(false);
+    }
+  }, [location]);
+
+  // Handle user state changes and redirections
+  useEffect(() => {
+    console.log("User state changed in Login component");
+    console.log("Current user:", user);
+    console.log("fromLogout flag:", fromLogout);
+    
+    // Skip redirection if we just came from logout
+    if (fromLogout) {
+      console.log("Skipping redirection as we came from logout");
+      return;
+    }
+    
+    // Check for existing login
     try {
       const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
       console.log("Stored user from localStorage:", storedUser);
+      console.log("Token exists in localStorage:", !!token);
       
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        console.log("Parsed user from localStorage:", parsedUser);
-        
-        if (parsedUser && parsedUser.role === "SUBADMIN") {
-          console.log("Found stored Master Admin user, redirecting...");
-          navigate("/masteradmin");
-          return;
-        }
-      }
-
-      if (user) {
-        console.log("User found in context, role:", user.role);
-        if (user.role === "ADMIN") {
-          console.log("Redirecting to /dashboard");
-          navigate("/dashboard");
-        } else {
-          console.log("Redirecting to /userDashboard");
-          navigate("/userDashboard");
+      // Only redirect if both user and token exist
+      if (storedUser && token) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          console.log("Parsed user from localStorage:", parsedUser);
+          
+          // Validate that the user object has required properties
+          if (!parsedUser || !parsedUser.role) {
+            console.log("Invalid user data in localStorage, clearing...");
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
+            return;
+          }
+          
+          if (parsedUser.role === "MASTER_ADMIN") {
+            console.log("Found stored Master Admin user, redirecting to /masteradmin");
+            navigate("/masteradmin");
+            return;
+          } else if (parsedUser.role === "SUBADMIN") {
+            console.log("Found stored SUB_ADMIN user, redirecting to /dashboard");
+            navigate("/dashboard");
+            return;
+          } else if (parsedUser.role === "EMPLOYEE") {
+            console.log("Found stored Employee user, redirecting to /userDashboard");
+            navigate("/userDashboard");
+            return;
+          } else {
+            console.log("Unknown user role in localStorage:", parsedUser.role);
+          }
+        } catch (parseError) {
+          console.error("Error parsing user from localStorage:", parseError);
+          // Clear invalid JSON data
+          localStorage.removeItem("user");
+          localStorage.removeItem("token");
         }
       } else {
-        console.log("No user found in context");
+        console.log("Missing user or token in localStorage, staying on login page");
+      }
+
+      // Check context user if localStorage check didn't redirect
+      if (user) {
+        console.log("User found in context, role:", user.role);
+        if (user.role === "SUBADMIN") {
+          console.log("Redirecting to /dashboard");
+          navigate("/dashboard");
+        } else if (user.role === "EMPLOYEE") {
+          console.log("Redirecting to /userDashboard");
+          navigate("/userDashboard");
+        } else if (user.role === "MASTER_ADMIN") {
+          console.log("Redirecting to /masteradmin");
+          navigate("/masteradmin");
+        } else {
+          console.log("Unknown user role:", user.role);
+        }
+      } else {
+        console.log("No user found in context, staying on login page");
       }
     } catch (error) {
       console.error("Error in Login useEffect:", error);
+      // Clear potentially corrupted data
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
     }
-  }, [user, navigate]);
+  }, [user, navigate, fromLogout]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,85 +140,92 @@ const Login = () => {
 
     console.log("Login attempt with:", email, password);
 
-    // Special case for Master Admin login
-    if (email === "8080276014" && password === "Rohit@8080") {
-      console.log("Master Admin credentials detected!");
+    try {
+      console.log("Attempting login through API...");
       
-      // Set a mock user with SUBADMIN role
-      const masterAdminUser = {
-        email: "masteradmin@example.com",
-        role: "SUBADMIN",
-        firstName: "Master",
-        lastName: "Admin"
-      };
+      // Determine API endpoint based on email domain or other logic
+      // This is a simple example - you may need more complex logic
+      const loginEndpoint = email.includes("master") ? "/admin/login" : "/api/subadmin/login";
+      console.log("Using login endpoint:", loginEndpoint);
       
-      try {
-        // Save user to localStorage first
-        localStorage.setItem("user", JSON.stringify(masterAdminUser));
-        console.log("Master Admin user saved to localStorage");
+      // Send params in URL rather than request body to match @RequestParam in backend
+      const response = await axios.post(`${loginEndpoint}?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+      
+      console.log("Login API response:", response);
+      
+      if (response.data) {
+        // Format user data from API response
+        const userData = {
+          ...response.data,
+          // Keep the role as provided by the API - don't override
+          role: response.data.role,
+          firstName: response.data.name || response.data.firstName || "User",
+          lastName: response.data.lastname || response.data.lastName || ""
+        };
         
-        // Set user in context
+        // Save to localStorage first (before setting user in context)
+        localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem("token", response.data.token || "demo-token");
+        console.log("User data saved to localStorage:", userData);
+        
+        // Set fromLogout to false so redirection can happen
+        setFromLogout(false);
+        
+        // Set in context
         if (setUser) {
-          setUser(masterAdminUser);
-          console.log("Master Admin user set in context");
+          setUser(userData);
+          console.log("User set in context:", userData);
         } else {
           console.error("setUser function is not available");
         }
         
-        // Show success modal before navigating
-        setSuccessMessage("Login successful! Welcome to Master Admin dashboard.");
-        setShowSuccessModal(true);
-        
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          // Navigate after showing success message
-          console.log("Navigating to /masteradmin");
-          navigate("/masteradmin");
-        }, 2000);
-        
-        setLoading(false);
-        return;
-      } catch (error) {
-        console.error("Error setting Master Admin user:", error);
-        setError("Failed to log in as Master Admin");
-        setLoading(false);
-      }
-    }
-
-    try {
-      const response = await loginUser(email, password);
-      console.log("Response:", response);
-      if (response) {
-        const { role } = response;
-        console.log("User role:", role);
-        if (!role) {
-          throw new Error("User role not provided in response.");
-        }
-
         // Show success modal
-        setSuccessMessage(`Login successful! Welcome to your ${role} dashboard.`);
+        setSuccessMessage(`Login successful! Welcome to your dashboard.`);
         setShowSuccessModal(true);
         
+        // Wait a little longer before redirecting to ensure state propagation
         setTimeout(() => {
-          setShowSuccessModal(false);
-          setLoading(false);
-          if (role === "ADMIN") {
-            navigate("/dashboard");
-          } else if (role === "EMPLOYEE") {
-            navigate("/userdashboard");
-          } else {
-            toast.error("User role not recognized.");
+          try {
+            console.log("About to navigate based on role:", userData.role);
+            setShowSuccessModal(false);
+            setLoading(false);
+            
+            // Navigate based on role
+            if (userData.role === "MASTER_ADMIN") {
+              navigate("/masteradmin", { replace: true });
+            } else if (userData.role === "SUBADMIN") {
+              navigate("/dashboard", { replace: true });
+            } else if (userData.role === "EMPLOYEE") {
+              navigate("/userDashboard", { replace: true });
+            } else {
+              // Default fallback
+              navigate("/dashboard", { replace: true });
+            }
+          } catch (navError) {
+            console.error("Navigation error:", navError);
           }
-        }, 2000);
+        }, 2500);
+        
+        return;
       } else {
-        setLoading(false);
-        toast.error("Login Failed! Try again.");
+        throw new Error("Empty response from login API");
       }
     } catch (error) {
-      console.error("Error in handleSubmit:", error.message);
+      console.error("Error in handleSubmit:", error);
       setLoading(false);
-      setError("Login failed. Please check your credentials.");
-      toast.error("Login failed. Please check your credentials.");
+      
+      // Handle specific error messages
+      if (error.response) {
+        const errorMessage = error.response.data?.message || "Invalid credentials";
+        setError(errorMessage);
+        toast.error(`Login failed: ${errorMessage}`);
+      } else if (error.request) {
+        setError("Network error: Server not responding");
+        toast.error("Network error: Server not responding");
+      } else {
+        setError(`Error: ${error.message}`);
+        toast.error(`Error: ${error.message}`);
+      }
     }
   };
 
@@ -154,6 +233,47 @@ const Login = () => {
   const closeSuccessModal = () => {
     setShowSuccessModal(false);
   };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // Add this function to the component
+  const forceCleanLogin = (e) => {
+    e.preventDefault();
+    
+    console.log("Force cleaning all storage and state");
+    
+    // Clear all localStorage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Reset state
+    setFromLogout(true); // This prevents auto-redirect
+    setEmail("");
+    setPassword("");
+    setError("");
+    
+    // Add a success message
+    toast.success("Login state cleared successfully");
+    
+    // Force reload the page
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
+
+  // Debug unmounting
+  useEffect(() => {
+    return () => {
+      console.log("Login component unmounting, current user:", user);
+      console.log("Login localStorage on unmount:", {
+        user: localStorage.getItem("user"),
+        token: !!localStorage.getItem("token")
+      });
+    };
+  }, [user]);
 
   return (
     <div className="flex items-center justify-center min-h-screen relative overflow-hidden animate-fadeIn bg-slate-900">
@@ -254,16 +374,27 @@ const Login = () => {
                     <FaLock className="text-blue-400" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     id="password"
                     name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    className="block w-full pl-10 pr-3 py-3 bg-slate-700/50 border border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-gray-100"
+                    className="block w-full pl-10 pr-10 py-3 bg-slate-700/50 border border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-gray-100"
                     placeholder="Enter your password"
                   />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm"
+                    onClick={togglePasswordVisibility}
+                  >
+                    {showPassword ? (
+                      <FaEyeSlash className="text-gray-400 hover:text-blue-400 transition-colors duration-200" />
+                    ) : (
+                      <FaEye className="text-gray-400 hover:text-blue-400 transition-colors duration-200" />
+                    )}
+                  </button>
                 </div>
               </div>
               
@@ -287,13 +418,22 @@ const Login = () => {
                 </button>
               </div>
               
-              <div className="flex items-center justify-center mt-4 text-sm">
-                <a
-                  href="/reset"
+              <div className="flex items-center justify-between mt-4 text-sm">
+                <button
+                  type="button"
+                  onClick={() => navigate("/forgot-password")}
                   className="text-blue-400 hover:text-blue-300 transition duration-300 hover:underline"
                 >
                   Forgot Password?
-                </a>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={forceCleanLogin}
+                  className="text-xs text-gray-400 hover:text-blue-400 hover:underline transition-all duration-300"
+                >
+                  Force Clean Login
+                </button>
               </div>
             </form>
           </div>

@@ -15,8 +15,8 @@ const Navbar2 = () => {
     }, []);
     
       // Count active and inactive employees
-      const activeEmp = emp.filter((employee) => employee.status === "active");
-      const inactiveEmp = emp.filter((employee) => employee.status === "inactive");
+      const activeEmp = emp.filter((employee) => employee.status === "Active" || employee.status === "active");
+      const inactiveEmp = emp.filter((employee) => employee.status === "Inactive" || employee.status === "inactive");
       const activeEmpCount = activeEmp.length;
       const inactiveEmpCount = inactiveEmp.length;
     
@@ -26,7 +26,7 @@ const Navbar2 = () => {
         if (!acc[role]) {
           acc[role] = { active: 0, inactive: 0 };
         }
-        if (employee.status === "active") {
+        if (employee.status === "Active" || employee.status === "active") {
           acc[role].active += 1;
         } else {
           acc[role].inactive += 1;

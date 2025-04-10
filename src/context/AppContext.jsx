@@ -9,6 +9,25 @@ export const useApp = () => {
   return useContext(AppContext);
 };
 
+// Set up Axios defaults
+axios.defaults.withCredentials = false;
+// Set base URL
+axios.defaults.baseURL = 'http://localhost:8282';
+
+// Create an axios interceptor to add auth token to all requests
+axios.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
+  }
+);
+
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
@@ -30,13 +49,15 @@ export const AppProvider = ({ children }) => {
   const [isProfitable, setIsProfitable] = useState(false);
   const [companyBudget] = useState(1000000); // 10 lakh budget
   const [stats, setStats] = useState({
-    totalEmployees: 0,
-    activeEmployees: 0,
-    inactiveEmployees: 0,
-    totalSalary: 0,
-    activeSalary: 0,
-    inactiveSalary: 0,
-    profitLoss: 0
+    totalEmployees: emp.length,
+    activeEmployees: emp.filter(employee => employee.status === "Active" || employee.status === "active").length,
+    inactiveEmployees: emp.filter(employee => employee.status === "Inactive" || employee.status === "inactive").length,
+    totalSalary: emp.reduce((sum, employee) => sum + (parseFloat(employee.salary) || 0), 0),
+    activeSalary: emp.filter(e => e.status === "Active" || e.status === "active")
+      .reduce((sum, e) => sum + (parseFloat(e.salary) || 0), 0),
+    inactiveSalary: emp.filter(e => e.status === "Inactive" || e.status === "inactive")
+      .reduce((sum, e) => sum + (parseFloat(e.salary) || 0), 0),
+    profitLoss: 1000000 - emp.reduce((sum, employee) => sum + (parseFloat(employee.salary) || 0), 0)
   });
 
   const navigate = useNavigate();
@@ -63,17 +84,32 @@ export const AppProvider = ({ children }) => {
 
   const loginUser = async (email, password) => {
     try {
-      const response = await axios.post("http://localhost:8282/auth/login", {
-        email,
-        password,
-      });
+      // Determine which API endpoint to use based on email pattern or other logic
+      const loginEndpoint = email.includes("master") ? "/admin/login" : "/api/subadmin/login";
+      console.log("Using login endpoint:", loginEndpoint);
+      
+      // Send params in URL rather than request body to match @RequestParam in backend
+      const response = await axios.post(`${loginEndpoint}?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+      
       console.log("API Response:", response.data);
-      const { token, role, email: userEmail } = response.data;
+      const { token, role } = response.data;
       setAuthToken(token);
-      setUser({ email: userEmail, role });
+      setUser({
+        ...response.data,
+        email: response.data.email || email,
+        role: role // Keep the original role from the response
+      });
       return response.data;
     } catch (error) {
       console.error("Login failed:", error);
+      if (error.response) {
+        console.log("Error response from server:", error.response);
+        toast.error(`Login failed: ${error.response.data?.message || 'Invalid credentials'}`);
+      } else if (error.request) {
+        toast.error("Network error: Server not responding");
+      } else {
+        toast.error(`Error: ${error.message}`);
+      }
       throw error;
     }
   };
@@ -96,14 +132,15 @@ export const AppProvider = ({ children }) => {
   };
 
   const logoutUser = () => {
+    console.log("Explicit logout requested by user action");
     // Clear user data
     setUser(null);
     setEmp([]);
     // Clear local storage
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    // Navigate to logout page
-    navigate('/logout');
+    // Navigate to logout page with specific flag
+    navigate('/logout', { state: { manualLogout: true } });
   };
 
   const fetchUserProfile = async () => {
@@ -147,14 +184,54 @@ export const AppProvider = ({ children }) => {
 
   const addEmp = async (userData) => {
     try {
-      const response = await axios.post(
-        "http://localhost:8282/public/addEmp",
-        userData
-      );
+      // Convert types to match Java model expectations
+      const formattedData = {
+        ...userData,
+        phone: typeof userData.phone === 'string' ? parseInt(userData.phone, 10) : userData.phone,
+        salary: typeof userData.salary === 'string' ? parseInt(userData.salary, 10) : userData.salary,
+        enabled: true,
+        username: userData.email,
+        accountNonLocked: true,
+        accountNonExpired: true,
+        credentialsNonExpired: true
+      };
+      
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      };
+      
+      console.log("Making API request to add employee:", formattedData);
+      // Use relative path since baseURL is now configured
+      const response = await axios.post('/public/addEmp', formattedData, config);
+      console.log("API response:", response);
+      
+      // Update local state with the new employee
       setEmp(prevEmp => [...prevEmp, response.data]);
+      // Dispatch an event to notify components that employees have been updated
+      window.dispatchEvent(new Event('employeesUpdated'));
+      toast.success("Employee added successfully!");
       return response.data;
     } catch (error) {
-      console.error("Failed to save user:", error);
+      console.error("Failed to add employee:", error);
+      // Show a more detailed error message
+      if (error.response) {
+        console.log("Error response from server:", error.response);
+        
+        if (error.response.status === 403) {
+          toast.error("Access denied. Please check your login credentials or permissions.");
+        } else {
+          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        toast.error("Network error: Cannot connect to the server. Is the backend running?");
+      } else {
+        // Other error
+        toast.error(`Error: ${error.message}`);
+      }
       throw error;
     }
   };
@@ -184,11 +261,44 @@ export const AppProvider = ({ children }) => {
   const fetchAllEmp = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8282/public/getAllEmp');
-      setEmp(response.data);
-      calculateStats(response.data);
+      // Try to obtain a CSRF token first if the server uses CSRF protection
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      };
+      
+      console.log("Making API request to fetch employees...");
+      // Use relative path since baseURL is now configured
+      const response = await axios.get('/public/getAllEmp', config);
+      console.log("API response:", response);
+      
+      if (response.data) {
+        setEmp(response.data);
+        calculateStats(response.data);
+      } else {
+        console.warn("Empty response from getAllEmp API");
+      }
     } catch (error) {
       console.error('Error fetching employees:', error);
+      // Show an error toast
+      if (error.response) {
+        // Server responded with an error status code
+        console.log("Error response from server:", error.response);
+        
+        if (error.response.status === 403) {
+          toast.error("Access denied. Please check your login credentials or permissions.");
+        } else {
+          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        toast.error("Network error: Cannot connect to the server. Is the backend running?");
+      } else {
+        // Other error
+        toast.error(`Error: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -381,27 +491,86 @@ export const AppProvider = ({ children }) => {
 
   const deleteEmployee = async (empId) => {
     try {
-      await axios.delete(`http://localhost:8282/public/deleteEmp/${empId}`);
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      };
+      
+      console.log(`Making API request to delete employee with ID: ${empId}`);
+      // Use relative path since baseURL is now configured
+      await axios.delete(`/public/deleteEmp/${empId}`, config);
+      console.log("Employee deleted successfully");
+      
       toast.success("Employee deleted successfully");
       setEmp(prevEmp => prevEmp.filter(emp => emp.empId !== empId));
     } catch (error) {
-      toast.error("Failed to delete employee");
+      console.error("Failed to delete employee:", error);
+      // Show a more detailed error message
+      if (error.response) {
+        console.log("Error response from server:", error.response);
+        
+        if (error.response.status === 403) {
+          toast.error("Access denied. Please check your login credentials or permissions.");
+        } else {
+          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
+        }
+      } else if (error.request) {
+        toast.error("Network error: Cannot connect to the server. Is the backend running?");
+      } else {
+        toast.error(`Error: ${error.message}`);
+      }
     }
   };
 
   const updateEmployee = async (empId, updatedData) => {
     try {
-      const response = await axios.put(
-        `http://localhost:8282/public/update/${empId}`,
-        updatedData,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      // Convert types to match Java model expectations
+      const formattedData = {
+        ...updatedData,
+        phone: typeof updatedData.phone === 'string' ? parseInt(updatedData.phone, 10) : updatedData.phone,
+        salary: typeof updatedData.salary === 'string' ? parseInt(updatedData.salary, 10) : updatedData.salary,
+        enabled: true,
+        username: updatedData.email,
+        accountNonLocked: true,
+        accountNonExpired: true,
+        credentialsNonExpired: true
+      };
+      
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      };
+      
+      console.log(`Making API request to update employee with ID: ${empId}`, formattedData);
+      // Use relative path since baseURL is now configured
+      const response = await axios.put(`/public/update/${empId}`, formattedData, config);
+      console.log("API response:", response);
+      
       setEmp(prevEmp => prevEmp.map(emp => 
         emp.empId === empId ? response.data : emp
       ));
+      toast.success("Employee updated successfully");
       return response.data;
     } catch (error) {
       console.error("Failed to update employee:", error);
+      // Show a more detailed error message
+      if (error.response) {
+        console.log("Error response from server:", error.response);
+        
+        if (error.response.status === 403) {
+          toast.error("Access denied. Please check your login credentials or permissions.");
+        } else {
+          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
+        }
+      } else if (error.request) {
+        toast.error("Network error: Cannot connect to the server. Is the backend running?");
+      } else {
+        toast.error(`Error: ${error.message}`);
+      }
       throw error;
     }
   };

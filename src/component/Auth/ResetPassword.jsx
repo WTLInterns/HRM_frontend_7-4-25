@@ -1,83 +1,349 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { FaLock, FaArrowLeft, FaSpinner, FaCheck, FaEye, FaEyeSlash, FaKey } from "react-icons/fa";
+import "../DashoBoard/animations.css";
 
-const ForgotPassword = () => {
-  const [password, setPassword] = useState("");
+const ResetPassword = () => {
+  const navigate = useNavigate();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [invalidOtp, setInvalidOtp] = useState(false);
 
-  const handlePasswordReset = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("You must be logged in to reset your password.");
+  // Get email from localStorage - OTP will be entered by user
+  useEffect(() => {
+    const resetEmail = localStorage.getItem("resetEmail");
+    
+    if (!resetEmail) {
+      toast.error("Session expired. Please restart the password reset process.");
+      navigate("/forgot-password");
       return;
     }
-
-    try {
-      const response = await axios.put(
-        "http://localhost:8282/auth/reset",
-        { password },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+    
+    setEmail(resetEmail);
+    console.log("Retrieved email from localStorage:", resetEmail);
+    
+    // Get the user ID by email (we need it for update-password/{id})
+    const fetchUserId = async () => {
+      try {
+        console.log("Fetching user with email:", resetEmail);
+        const response = await axios.get(`/api/subadmin/subadminbygamil/${resetEmail}`);
+        console.log("User fetch response:", response.data);
+        
+        if (response.data && response.data.id) {
+          setUserId(response.data.id);
+          console.log("User ID set:", response.data.id);
+        } else {
+          console.error("User ID not found in response:", response.data);
+          throw new Error("User not found");
         }
-      );
+      } catch (error) {
+        console.error("Error fetching user:", error.response || error);
+        toast.error("Could not find user account. Please try again.");
+        navigate("/forgot-password");
+      }
+    };
+    
+    fetchUserId();
+  }, [navigate]);
 
-      setSuccess("Password reset successfully!");
-      setError("");
-      setPassword("");
-    } catch (err) {
-      setError(err.response?.data || "Failed to reset password. Try again.");
-      setSuccess("");
+  // Handle password reset submission
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError("");
+    setInvalidOtp(false);
+    
+    // Validate inputs
+    if (!otp || otp.length < 4) {
+      setError("Please enter a valid OTP code");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+    
+    if (!userId) {
+      setError("User ID not found. Please restart the process.");
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      console.log("Verifying OTP - Email:", email, "OTP:", otp);
+      
+      // First verify OTP with the new password
+      try {
+        const verifyResponse = await axios.post("/api/subadmin/forgot-password/verify", 
+          null,
+          { 
+            params: { 
+              email,
+              otp,
+              newPassword
+            }
+          }
+        );
+        
+        console.log("OTP verification response:", verifyResponse);
+      } catch (otpError) {
+        console.error("OTP verification failed:", otpError.response || otpError);
+        setInvalidOtp(true);
+        setError(otpError.response?.data || "Invalid OTP. Please check and try again.");
+        setLoading(false);
+        return;
+      }
+      
+      // Then update the password in the database
+      console.log("Updating password for user ID:", userId);
+      const updateResponse = await axios.put(`/api/subadmin/update-password/${userId}`, 
+        null,
+        { params: { newPassword } }
+      );
+      
+      console.log("Password update response:", updateResponse);
+      toast.success("Password updated successfully!");
+      setPasswordUpdated(true);
+      setLoading(false);
+      
+      // Clear reset data from localStorage
+      localStorage.removeItem("resetEmail");
+      localStorage.removeItem("resetOtp");
+      
+      // Redirect to login after success
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (error) {
+      console.error("Error resetting password:", error.response || error);
+      setError(error.response?.data || "Failed to reset password. Please try again.");
+      toast.error(error.response?.data || "Failed to reset password");
+      setLoading(false);
     }
   };
 
+  // Go back to forgot password
+  const goBack = () => {
+    navigate("/forgot-password");
+  };
+
+  // Toggle password visibility
+  const toggleNewPasswordVisibility = () => {
+    setShowNewPassword(!showNewPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-purple-500 to-blue-600">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-96">
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Reset Your Password
-        </h2>
+    <div className="flex items-center justify-center min-h-screen relative overflow-hidden animate-fadeIn bg-slate-900">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute w-full h-full bg-login-image opacity-10"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-900/80 via-slate-900/90 to-slate-900/95"></div>
+        
+        {/* Animated orbs */}
+        <div className="absolute top-[10%] left-[15%] w-72 h-72 rounded-full bg-blue-600/20 animate-float blur-3xl"></div>
+        <div className="absolute bottom-[20%] right-[10%] w-80 h-80 rounded-full bg-indigo-600/20 animate-float-delay blur-3xl"></div>
+        <div className="absolute top-[40%] right-[30%] w-64 h-64 rounded-full bg-sky-600/20 animate-pulse-slow blur-3xl"></div>
+      </div>
 
-        {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded mb-4 text-center">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-100 text-green-700 p-3 rounded mb-4 text-center">
-            {success}
-          </div>
-        )}
+      {/* Toast Container */}
+      <ToastContainer 
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
 
-        <div className="mb-4">
-          <label
-            htmlFor="password"
-            className="block text-gray-700 font-medium mb-2"
-          >
-            New Password
-          </label>
-          <input
-            type="password"
-            id="password"
-            placeholder="Enter new password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
+      <div className="max-w-md w-full mx-4 relative">
+        {/* Logo/Header */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg mb-4 animate-scaleIn">
+            <FaLock className="text-white text-3xl" />
+          </div>
+          <h1 className="text-3xl font-bold text-white tracking-wide animate-fadeIn animate-delay-300">Reset Password</h1>
+          <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 mt-2 rounded-full animate-fadeIn animate-delay-500"></div>
         </div>
 
+        {/* Form Card */}
+        <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden animate-scaleIn animate-delay-500">
+          <div className="p-8">
+            {!passwordUpdated ? (
+              <>
+                <button 
+                  onClick={goBack}
+                  className="flex items-center text-blue-400 hover:text-blue-300 mb-6 transition-all duration-300"
+                >
+                  <FaArrowLeft className="mr-2" /> Back
+                </button>
+                
+                {invalidOtp && (
+                  <div className="bg-red-900/30 border border-red-800 rounded-lg p-3 mb-4 animate-pulse">
+                    <p className="text-red-400 text-sm">Invalid OTP. Please check and try again.</p>
+          </div>
+        )}
+                
+                {error && !invalidOtp && (
+                  <div className="bg-red-900/30 border border-red-800 rounded-lg p-3 mb-4 animate-pulse">
+                    <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+                <form onSubmit={handleResetPassword} className="space-y-5">
+                  {/* OTP Input Field */}
+                  <div className="space-y-2">
+                    <label htmlFor="otp" className="block text-sm font-medium text-gray-300">
+                      OTP Code
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaKey className="text-blue-400" />
+                      </div>
+                      <input
+                        type="text"
+                        id="otp"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        required
+                        maxLength={6}
+                        className="block w-full pl-10 pr-3 py-3 bg-slate-700/50 border border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-gray-100"
+                        placeholder="Enter OTP code sent to your email"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="newPassword" className="block text-sm font-medium text-gray-300">
+            New Password
+          </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaLock className="text-blue-400" />
+                      </div>
+          <input
+                        type={showNewPassword ? "text" : "password"}
+                        id="newPassword"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        className="block w-full pl-10 pr-10 py-3 bg-slate-700/50 border border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-gray-100"
+            placeholder="Enter new password"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm"
+                        onClick={toggleNewPasswordVisibility}
+                      >
+                        {showNewPassword ? (
+                          <FaEyeSlash className="text-gray-400 hover:text-blue-400 transition-colors duration-200" />
+                        ) : (
+                          <FaEye className="text-gray-400 hover:text-blue-400 transition-colors duration-200" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300">
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaLock className="text-blue-400" />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        id="confirmPassword"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        className="block w-full pl-10 pr-10 py-3 bg-slate-700/50 border border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-gray-100"
+                        placeholder="Confirm your password"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm"
+                        onClick={toggleConfirmPasswordVisibility}
+                      >
+                        {showConfirmPassword ? (
+                          <FaEyeSlash className="text-gray-400 hover:text-blue-400 transition-colors duration-200" />
+                        ) : (
+                          <FaEye className="text-gray-400 hover:text-blue-400 transition-colors duration-200" />
+                        )}
+                      </button>
+                    </div>
+        </div>
+
+                  <div className="pt-2">
         <button
-          onClick={handlePasswordReset}
-          className="w-full py-2 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition duration-200 font-semibold"
-        >
-          Reset Password
+                      type="submit"
+                      className="w-full px-4 py-3 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group flex items-center justify-center"
+                      disabled={loading || invalidOtp}
+                    >
+                      {loading ? (
+                        <>
+                          <FaSpinner className="animate-spin mr-2" />
+                          <span>Updating...</span>
+                        </>
+                      ) : (
+                        "Update Password"
+                      )}
         </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="py-8 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 rounded-full bg-green-600/30 flex items-center justify-center">
+                    <FaCheck className="text-green-400 text-4xl animate-pulse-slow" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Password Updated!</h3>
+                <p className="text-green-100 mb-6">Your password has been successfully updated. Redirecting to login...</p>
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-slate-900/50 p-4 border-t border-slate-700/50">
+            <p className="text-xs text-center text-gray-400">
+              Please create a strong password using a mix of letters, numbers, and symbols.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default ForgotPassword;
+export default ResetPassword;

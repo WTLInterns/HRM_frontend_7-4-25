@@ -250,19 +250,19 @@ export default function Attendance() {
         <div className="p-6">
           <h2 className="text-2xl font-semibold mb-6 text-gray-100">Mark Attendance</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Employee Name */}
+          {/* Employee Name */}
             <div>
               <label className="block text-sm font-medium text-gray-200 mb-2">
-                Employee Name
-              </label>
-              <input
-                type="text"
+              Employee Name
+            </label>
+            <input
+              type="text"
                 className="w-full p-2 border border-gray-700 rounded-lg bg-slate-700 text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={employeeName}
-                onChange={(e) => setEmployeeName(e.target.value)}
-                required
-              />
-            </div>
+              value={employeeName}
+              onChange={(e) => setEmployeeName(e.target.value)}
+              required
+            />
+          </div>
 
             {/* Calendar */}
             <div className="relative">
@@ -287,9 +287,9 @@ export default function Attendance() {
                 >
                   <div className="p-2 border-b border-gray-600 text-center font-medium text-gray-300">
                     {formatDate(selectedDate)}
-                  </div>
+          </div>
                   {statusOptions.map(status => (
-                    <button
+          <button
                       key={status}
                       type="button"
                       className={`block w-full text-left px-4 py-2 hover:bg-slate-600 text-gray-100 ${
@@ -300,20 +300,20 @@ export default function Attendance() {
                       onClick={() => handleStatusSelect(status)}
                     >
                       {status}
-                    </button>
+          </button>
                   ))}
                   <div className="p-2 border-t border-gray-600">
-                    <button
+          <button
                       type="button"
                       onClick={handleCloseDropdown}
                       className="w-full py-1 bg-gray-600 text-white rounded hover:bg-gray-500 transition flex items-center justify-center gap-1"
-                    >
+          >
                       <FaTimes className="text-xs" /> Cancel
-                    </button>
+          </button>
                   </div>
                 </div>
-              )}
-            </div>
+          )}
+        </div>
 
             {/* Selected Dates Summary */}
             {selectedDates.length > 0 && (
@@ -362,7 +362,7 @@ export default function Attendance() {
               </div>
             )}
           </form>
-        </div>
+          </div>
       </div>
     </div>
   );

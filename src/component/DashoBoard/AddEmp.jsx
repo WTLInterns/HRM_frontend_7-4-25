@@ -116,27 +116,45 @@ export default function AddEmp() {
       toast.error("All fields are required");
       return false;
     }
+    
+    // Email validation
     if (!/\S+@\S+\.\S+/.test(email)) {
       toast.error("Please enter a valid email address");
       return false;
     }
+    
+    // Phone validation - must be 10 digits for Indian phone numbers
     if (!/^[0-9]{10}$/.test(phone)) {
       toast.error("Please enter a valid 10-digit phone number");
       return false;
     }
-    // Aadhaar validation in the format: "1234 4567 7890"
-    if (!/^\d{4}\s\d{4}\s\d{4}$/.test(aadharNo)) {
-      toast.error("Please enter a valid Aadhaar number in the format: 1234 4567 7890");
+    
+    // Two formats accepted for Aadhaar: with spaces or without
+    // Format with spaces: "1234 5678 9012"
+    // Format without spaces: "123456789012"
+    if (!/^\d{4}\s\d{4}\s\d{4}$/.test(aadharNo) && !/^\d{12}$/.test(aadharNo)) {
+      toast.error("Please enter a valid 12-digit Aadhaar number (with or without spaces)");
       return false;
     }
+    
+    // Salary validation - must be a positive number
     if (isNaN(salary) || Number(salary) <= 0) {
       toast.error("Please enter a valid salary amount");
       return false;
     }
+    
+    // Bank name validation - alphabets and spaces only
     if (!/^[A-Za-z\s]+$/.test(bankName)) {
       toast.error("Please enter a valid bank name (alphabets and spaces only)");
       return false;
     }
+    
+    // IFSC code validation
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfscCode)) {
+      toast.error("Please enter a valid IFSC code (e.g., SBIN0123456)");
+      return false;
+    }
+    
     return true;
   };
 
@@ -145,11 +163,15 @@ export default function AddEmp() {
     e.preventDefault();
     if (!validateFields()) return;
     try {
+      // Create a temporary password (you might want to generate this or set a default)
+      const tempPassword = "employee@123"; // Using the default password from Postman example
+      
       const userData = {
         firstName,
         lastName,
         email,
-        phone,
+        // Convert phone to a number as backend expects Long
+        phone: Number(phone),
         aadharNo,
         panCard,
         education,
@@ -164,14 +186,29 @@ export default function AddEmp() {
         bankAccountNo,
         bankIfscCode,
         branchName,
-        salary,
+        // Convert salary to a number as backend expects Long
+        salary: Number(salary),
+        // Add missing fields required by backend
+        password: tempPassword,
+        roll: "EMPLOYEE", // Using the default value from your model
+        company: "Tech Solutions Pvt Ltd", // Using the company from your Postman example
+        // Required Spring Security fields
+        enabled: true,
+        username: email, // Username is same as email
+        accountNonLocked: true,
+        accountNonExpired: true,
+        credentialsNonExpired: true
       };
+      
+      console.log("Sending employee data:", userData);
       await addEmp(userData);
-      toast.success("Registered Successfully");
+      toast.success("Employee Registered Successfully");
       setModal(false);
       handleReset(e);
+      fetchAllEmp(); // Refresh the employee list after adding
     } catch (err) {
-      toast.error("Failed to register user");
+      toast.error("Failed to register employee: " + (err.response?.data?.message || err.message));
+      console.error(err);
     }
   };
 
@@ -244,7 +281,8 @@ export default function AddEmp() {
         firstName,
         lastName,
         email,
-        phone,
+        // Convert phone to a number as backend expects Long
+        phone: Number(phone),
         aadharNo,
         panCard,
         education,
@@ -259,15 +297,29 @@ export default function AddEmp() {
         bankAccountNo,
         bankIfscCode,
         branchName,
-        salary,
+        // Convert salary to a number as backend expects Long
+        salary: Number(salary),
+        // Maintain these fields if they exist in the backend
+        roll: "EMPLOYEE",
+        company: selectedEmployee.company || "Tech Solutions Pvt Ltd",
+        // Required Spring Security fields
+        password: selectedEmployee.password || "employee@123",
+        enabled: true,
+        username: email, // Username is same as email
+        accountNonLocked: true,
+        accountNonExpired: true,
+        credentialsNonExpired: true
       };
+      
+      console.log("Updating employee data:", updatedData);
       await updateEmployee(selectedEmployee.empId, updatedData);
       toast.success("Employee updated successfully");
       setUpdateModal(false);
       setSelectedEmployee(null);
       fetchAllEmp();
     } catch (err) {
-      toast.error("Failed to update employee");
+      toast.error("Failed to update employee: " + (err.response?.data?.message || err.message));
+      console.error(err);
     }
   };
 
@@ -350,7 +402,7 @@ export default function AddEmp() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      employee.status === "active" ? "bg-green-800 text-green-100" : "bg-red-800 text-red-100"
+                      employee.status === "Active" ? "bg-green-800 text-green-100" : "bg-red-800 text-red-100"
                     }`}>
                         {employee.status}
                       </span>
@@ -400,7 +452,7 @@ export default function AddEmp() {
                   <div className="mt-1 flex items-center">
                     <span className="text-sm text-gray-400 mr-2">Status:</span>
                     <span className={`px-2 py-0.5 text-xs rounded-full ${
-                      employee.status === "active" ? "bg-green-800 text-green-100" : "bg-red-800 text-red-100"
+                      employee.status === "Active" ? "bg-green-800 text-green-100" : "bg-red-800 text-red-100"
                     }`}>
                       {employee.status}
                     </span>
@@ -497,7 +549,7 @@ export default function AddEmp() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity">
-              <div className="absolute inset-0 bg-gray-900 opacity-75"></div>
+              <div className="absolute inset-0 bg-black opacity-75"></div>
             </div>
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen"></span>&#8203;
             <div className="inline-block align-bottom bg-slate-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-slate-600">
@@ -514,7 +566,7 @@ export default function AddEmp() {
                 <form onSubmit={handleAddEmp} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-300">
                         First Name:
                       </label>
                       <input
@@ -522,12 +574,12 @@ export default function AddEmp() {
                         value={firstName}
                         onChange={(e) => setFname(e.target.value)}
                         placeholder="Enter your first name"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-300">
                         Last Name:
                       </label>
                       <input
@@ -535,12 +587,12 @@ export default function AddEmp() {
                         value={lastName}
                         onChange={(e) => setLname(e.target.value)}
                         placeholder="Enter your last name"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                         Email ID:
                       </label>
                       <input
@@ -549,12 +601,12 @@ export default function AddEmp() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email address"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="contact" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="contact" className="block text-sm font-medium text-gray-300">
                         Contact No:
                       </label>
                       <input
@@ -562,12 +614,12 @@ export default function AddEmp() {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="Enter your 10-digit contact number"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="aadharNo" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="aadharNo" className="block text-sm font-medium text-gray-300">
                         Aadhar No:
                       </label>
                       <input
@@ -575,12 +627,12 @@ export default function AddEmp() {
                         value={aadharNo}
                         onChange={(e) => setaadharNo(e.target.value)}
                         placeholder="Enter your 12-digit Aadhar number"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="panCard" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="panCard" className="block text-sm font-medium text-gray-300">
                         Pancard No:
                       </label>
                       <input
@@ -588,19 +640,19 @@ export default function AddEmp() {
                         value={panCard}
                         onChange={(e) => setpanCard(e.target.value)}
                         placeholder="Enter your PAN card (e.g., ABCDE1234F)"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="education" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="education" className="block text-sm font-medium text-gray-300">
                         Education:
                       </label>
                       <select
                         id="education"
                         value={education}
                         onChange={(e) => seteducation(e.target.value)}
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Select education</option>
                         <option value="hsc">HSC</option>
@@ -610,14 +662,14 @@ export default function AddEmp() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="bloodGroup" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="bloodGroup" className="block text-sm font-medium text-gray-300">
                         Blood Group:
                       </label>
                       <select
                         id="bloodGroup"
                         value={bloodGroup}
                         onChange={(e) => setbloodGroup(e.target.value)}
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Select blood group</option>
                         <option value="a+">A+</option>
@@ -628,14 +680,14 @@ export default function AddEmp() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="jobRole" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="jobRole" className="block text-sm font-medium text-gray-300">
                         Job Role:
                       </label>
                       <select
                         id="jobRole"
                         value={jobRole}
                         onChange={(e) => setjobRole(e.target.value)}
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Select job role</option>
                         <option value="HR">HR</option>
@@ -650,14 +702,14 @@ export default function AddEmp() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="gender" className="block text-sm font-medium text-gray-300">
                         Gender:
                       </label>
                       <select
                         id="gender"
                         value={gender}
                         onChange={(e) => setgender(e.target.value)}
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Select gender</option>
                         <option value="male">Male</option>
@@ -667,7 +719,7 @@ export default function AddEmp() {
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
-                      <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="address" className="block text-sm font-medium text-gray-300">
                         Address:
                       </label>
                       <textarea
@@ -675,12 +727,12 @@ export default function AddEmp() {
                         value={address}
                         onChange={(e) => setaddress(e.target.value)}
                         placeholder="Enter your full address"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       ></textarea>
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="birthDate" className="block text-sm font-medium text-gray-300">
                         Birth Date:
                       </label>
                       <input
@@ -688,13 +740,13 @@ export default function AddEmp() {
                         type="date"
                         value={birthDate}
                         onChange={(e) => setbirthDate(e.target.value)}
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         aria-label="Select your birth date"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="joiningDate" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="joiningDate" className="block text-sm font-medium text-gray-300">
                         Joining Date:
                       </label>
                       <input
@@ -702,29 +754,29 @@ export default function AddEmp() {
                         type="date"
                         value={joiningDate}
                         onChange={(e) => setjoiningDate(e.target.value)}
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         aria-label="Select your joining date"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-300">
                         Status:
                       </label>
                       <select
                         id="status"
                         value={status}
                         onChange={(e) => setstatus(e.target.value)}
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Select status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
                       </select>
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="bankName" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="bankName" className="block text-sm font-medium text-gray-300">
                         Bank Name:
                       </label>
                       <input
@@ -732,12 +784,12 @@ export default function AddEmp() {
                         value={bankName}
                         onChange={(e) => setbankName(e.target.value)}
                         placeholder="Enter bank name (alphabets and spaces only)"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="bankAccountNo" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="bankAccountNo" className="block text-sm font-medium text-gray-300">
                         Bank Account No:
                       </label>
                       <input
@@ -745,12 +797,12 @@ export default function AddEmp() {
                         value={bankAccountNo}
                         onChange={(e) => setbankAccountNo(e.target.value)}
                         placeholder="Enter your bank account number"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="bankIfscCode" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="bankIfscCode" className="block text-sm font-medium text-gray-300">
                         Bank IFSC Code:
                       </label>
                       <input
@@ -758,12 +810,12 @@ export default function AddEmp() {
                         value={bankIfscCode}
                         onChange={(e) => setbankIfscCode(e.target.value.toUpperCase())}
                         placeholder="Enter IFSC code (e.g., ABCD0EF1234)"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="branchName" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="branchName" className="block text-sm font-medium text-gray-300">
                         Branch Name:
                       </label>
                       <input
@@ -771,12 +823,12 @@ export default function AddEmp() {
                         value={branchName}
                         onChange={(e) => setbranchName(e.target.value)}
                         placeholder="Enter branch name"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="salary" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="salary" className="block text-sm font-medium text-gray-300">
                         Salary:
                       </label>
                       <input
@@ -784,7 +836,7 @@ export default function AddEmp() {
                         value={salary}
                         onChange={(e) => setsalary(e.target.value)}
                         placeholder="Enter salary (numeric value)"
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                       />
                     </div>
                   </div>
@@ -792,13 +844,13 @@ export default function AddEmp() {
                     <button
                       type="button"
                       onClick={handleModalToggle}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+                      className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-md transition-all duration-300"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-300"
                     >
                       Add Employee
                     </button>
@@ -832,7 +884,7 @@ export default function AddEmp() {
                 <form onSubmit={handleUpdateEmp} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label htmlFor="firstNameUpd" className="block text-sm font-medium text-gray-700" >
+                <label htmlFor="firstNameUpd" className="block text-sm font-medium text-gray-300" >
                   First Name:
                 </label>
                 <input
@@ -840,12 +892,12 @@ export default function AddEmp() {
                   value={firstName}
                   onChange={(e) => setFname(e.target.value)}
                   placeholder="First name"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="lastNameUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="lastNameUpd" className="block text-sm font-medium text-gray-300">
                   Last Name:
                 </label>
                 <input
@@ -853,12 +905,12 @@ export default function AddEmp() {
                   value={lastName}
                   onChange={(e) => setLname(e.target.value)}
                   placeholder="Last name"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="emailUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="emailUpd" className="block text-sm font-medium text-gray-300">
                   Email:
                 </label>
                 <input
@@ -867,12 +919,12 @@ export default function AddEmp() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="contactUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="contactUpd" className="block text-sm font-medium text-gray-300">
                   Contact No:
                 </label>
                 <input
@@ -880,11 +932,11 @@ export default function AddEmp() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Contact No"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="aadharNoUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="aadharNoUpd" className="block text-sm font-medium text-gray-300">
                   Aadhar No:
                 </label>
                 <input
@@ -892,11 +944,11 @@ export default function AddEmp() {
                   value={aadharNo}
                   onChange={(e) => setaadharNo(e.target.value)}
                   placeholder="Aadhar No"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="panCardUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="panCardUpd" className="block text-sm font-medium text-gray-300">
                   Pancard No:
                 </label>
                 <input
@@ -904,18 +956,18 @@ export default function AddEmp() {
                   value={panCard}
                   onChange={(e) => setpanCard(e.target.value)}
                   placeholder="Enter your PAN card (e.g., ABCDE1234F)"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="educationUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="educationUpd" className="block text-sm font-medium text-gray-300">
                   Education:
                 </label>
                 <select
                   id="educationUpd"
                   value={education}
                   onChange={(e) => seteducation(e.target.value)}
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select education</option>
                   <option value="hsc">HSC</option>
@@ -924,14 +976,14 @@ export default function AddEmp() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label htmlFor="bloodGroupUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bloodGroupUpd" className="block text-sm font-medium text-gray-300">
                   Blood Group:
                 </label>
                 <select
                   id="bloodGroupUpd"
                   value={bloodGroup}
                   onChange={(e) => setbloodGroup(e.target.value)}
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select blood group</option>
                   <option value="a+">A+</option>
@@ -941,14 +993,14 @@ export default function AddEmp() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label htmlFor="jobRoleUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="jobRoleUpd" className="block text-sm font-medium text-gray-300">
                   Job Role:
                 </label>
                 <select
                   id="jobRoleUpd"
                   value={jobRole}
                   onChange={(e) => setjobRole(e.target.value)}
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select JobRole</option>
                   <option value="HR">HR</option>
@@ -962,14 +1014,14 @@ export default function AddEmp() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label htmlFor="genderUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="genderUpd" className="block text-sm font-medium text-gray-300">
                   Gender:
                 </label>
                 <select
                   id="genderUpd"
                   value={gender}
                   onChange={(e) => setgender(e.target.value)}
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select gender</option>
                   <option value="male">Male</option>
@@ -978,7 +1030,7 @@ export default function AddEmp() {
                 </select>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <label htmlFor="addressUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="addressUpd" className="block text-sm font-medium text-gray-300">
                   Address:
                 </label>
                 <textarea
@@ -986,11 +1038,11 @@ export default function AddEmp() {
                   value={address}
                   onChange={(e) => setaddress(e.target.value)}
                   placeholder="Address Details"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 ></textarea>
               </div>
               <div className="space-y-2">
-                <label htmlFor="birthDateUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="birthDateUpd" className="block text-sm font-medium text-gray-300">
                   Birth Date:
                 </label>
                 <input
@@ -998,11 +1050,11 @@ export default function AddEmp() {
                   type="date"
                   value={birthDate}
                   onChange={(e) => setbirthDate(e.target.value)}
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="joiningDateUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="joiningDateUpd" className="block text-sm font-medium text-gray-300">
                   Joining Date:
                 </label>
                 <input
@@ -1010,26 +1062,26 @@ export default function AddEmp() {
                   type="date"
                   value={joiningDate}
                   onChange={(e) => setjoiningDate(e.target.value)}
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="statusUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="statusUpd" className="block text-sm font-medium text-gray-300">
                   Status:
                 </label>
                 <select
                   id="statusUpd"
                   value={status}
                   onChange={(e) => setstatus(e.target.value)}
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <label htmlFor="bankNameUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bankNameUpd" className="block text-sm font-medium text-gray-300">
                   Bank Name:
                 </label>
                 <input
@@ -1037,11 +1089,11 @@ export default function AddEmp() {
                   value={bankName}
                   onChange={(e) => setbankName(e.target.value)}
                   placeholder="Bank Name"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="bankAccountNoUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bankAccountNoUpd" className="block text-sm font-medium text-gray-300">
                   Bank Account No:
                 </label>
                 <input
@@ -1049,11 +1101,11 @@ export default function AddEmp() {
                   value={bankAccountNo}
                   onChange={(e) => setbankAccountNo(e.target.value)}
                   placeholder="Account No"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="bankIfscCodeUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bankIfscCodeUpd" className="block text-sm font-medium text-gray-300">
                   Bank IFSC Code:
                 </label>
                 <input
@@ -1061,11 +1113,11 @@ export default function AddEmp() {
                   value={bankIfscCode}
                   onChange={(e) => setbankIfscCode(e.target.value)}
                   placeholder="Enter IFSC code (e.g., ABCD0EF1234"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="branchNameUpd" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="branchNameUpd" className="block text-sm font-medium text-gray-300">
                   Branch Name:
                 </label>
                 <input
@@ -1073,30 +1125,30 @@ export default function AddEmp() {
                   value={branchName}
                   onChange={(e) => setbranchName(e.target.value)}
                   placeholder="Branch Name"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="branchNameUpd" className="block text-sm font-medium text-gray-700">
-                  salary:
+                <label htmlFor="salaryUpd" className="block text-sm font-medium text-gray-300">
+                  Salary:
                 </label>
                 <input
-                  id="branchNameUpd"
+                  id="salaryUpd"
                   value={salary}
                   onChange={(e) => setsalary(e.target.value)}
-                  placeholder="Branch Name"
-                  className="block w-full px-4 py-2 border border-gray-300 rounded-md"
+                  placeholder="Salary"
+                  className="block w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 />
                     </div>
               </div>
               <div className="md:col-span-2 flex justify-center space-x-4">
-                <button type="submit" className="px-4 py-2 bg-green-500 text-white rounded-md">
+                <button type="submit" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors duration-300">
                   Update
                 </button>
                 <button
                   type="button"
                   onClick={handleUpdateModalToggle}
-                  className="px-4 py-2 bg-gray-500 text-white rounded-md"
+                  className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-md transition-colors duration-300"
                 >
                   Cancel
                 </button>

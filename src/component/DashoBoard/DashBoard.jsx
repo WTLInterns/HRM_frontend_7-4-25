@@ -59,8 +59,8 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
-        const activeEmployees = emp.filter(employee => employee.status === "active");
-        const inactiveEmployees = emp.filter(employee => employee.status === "inactive");
+        const activeEmployees = emp.filter(employee => employee.status === "Active" || employee.status === "active");
+        const inactiveEmployees = emp.filter(employee => employee.status === "Inactive" || employee.status === "inactive");
         
         const activeSalary = activeEmployees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
         const inactiveSalary = inactiveEmployees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
@@ -247,8 +247,8 @@ const Dashboard = () => {
   };
 
   // Count active and inactive employees
-  const activeEmp = emp.filter((employee) => employee.status === "active");
-  const inactiveEmp = emp.filter((employee) => employee.status === "inactive");
+  const activeEmp = emp.filter((employee) => employee.status === "Active" || employee.status === "active");
+  const inactiveEmp = emp.filter((employee) => employee.status === "Inactive" || employee.status === "inactive");
   const activeEmpCount = activeEmp.length;
   const inactiveEmpCount = inactiveEmp.length;
 
@@ -258,7 +258,7 @@ const Dashboard = () => {
     if (!acc[role]) {
       acc[role] = { active: 0, inactive: 0 };
     }
-    if (employee.status === "active") {
+    if (employee.status === "Active" || employee.status === "active") {
       acc[role].active += 1;
     } else {
       acc[role].inactive += 1;

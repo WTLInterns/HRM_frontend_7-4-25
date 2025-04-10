@@ -8,16 +8,37 @@ const Logout = () => {
   const [isLoggingOut, setIsLoggingOut] = React.useState(true);
 
   useEffect(() => {
-    // Simulate logout process
+    console.log("Logout component mounted, beginning logout process");
+    
+    // Start logout process immediately - no need to wait
     const timer = setTimeout(() => {
-      setIsLoggingOut(false);
-      // Clear local storage or session storage
+      console.log("Clearing ALL localStorage and sessionStorage items");
+      
+      // Clear specific auth items first for better debugging/logging
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      localStorage.removeItem("resetEmail");
+      localStorage.removeItem("resetOtp");
+      
+      // Then completely clear all storage
       localStorage.clear();
-      // Redirect to login page after animation
-      setTimeout(() => {
-        navigate('/login');
+      sessionStorage.clear();
+      
+      console.log("Logout successful, showing success message");
+      setIsLoggingOut(false);
+      
+      // Redirect to login page after showing success message
+      const redirectTimer = setTimeout(() => {
+        console.log("Redirecting to login page with fromLogout state");
+        // Using replace: true ensures the history is replaced and user can't go back
+        navigate('/login', { 
+          state: { fromLogout: true },
+          replace: true 
+        });
       }, 1000);
-    }, 2000);
+      
+      return () => clearTimeout(redirectTimer);
+    }, 1500); // Reduced from 2000 to 1500 for faster logout
 
     return () => clearTimeout(timer);
   }, [navigate]);

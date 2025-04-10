@@ -1,17 +1,181 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import "./animations.css";
 import { FaUsers, FaUserCheck, FaUserMinus, FaBriefcase, FaArrowUp, FaArrowDown } from "react-icons/fa";
 import { Pie, Bar } from 'react-chartjs-2';
 
 const Home = () => {
-  const { emp, stats, isProfitable, pieChartData, barChartData, chartOptions, barChartOptions } = useApp();
-
-  // Count active and inactive employees
-  const activeEmp = emp.filter((employee) => employee.status === "active");
-  const inactiveEmp = emp.filter((employee) => employee.status === "inactive");
+  const { emp } = useApp();
+  
+  // Calculate stats locally if not provided from context
+  const activeEmp = emp.filter((employee) => employee.status === "Active" || employee.status === "active");
+  const inactiveEmp = emp.filter((employee) => employee.status === "Inactive" || employee.status === "inactive");
   const activeEmpCount = activeEmp.length;
   const inactiveEmpCount = inactiveEmp.length;
+  
+  // For salary calculations
+  const activeSalary = activeEmp.reduce((sum, emp) => sum + (parseFloat(emp.salary) || 0), 0);
+  const inactiveSalary = inactiveEmp.reduce((sum, emp) => sum + (parseFloat(emp.salary) || 0), 0);
+  const totalSalary = activeSalary + inactiveSalary;
+  const companyBudget = 1000000; // 10 lakh budget
+  const profitLoss = companyBudget - totalSalary;
+  const isProfitable = profitLoss > 0;
+  
+  const stats = {
+    totalEmployees: emp.length,
+    activeEmployees: activeEmpCount,
+    inactiveEmployees: inactiveEmpCount,
+    totalSalary,
+    activeSalary,
+    inactiveSalary,
+    profitLoss
+  };
+
+  // Prepare pie chart data
+  const pieChartData = {
+    labels: ['Active Salary', 'Inactive Salary'],
+    datasets: [
+      {
+        data: [stats.activeSalary, stats.inactiveSalary],
+        backgroundColor: [
+          'rgba(56, 189, 248, 0.85)',   // Sky blue for active
+          'rgba(251, 113, 133, 0.85)',  // Modern pink for inactive
+        ],
+        borderColor: [
+          'rgba(56, 189, 248, 1)',
+          'rgba(251, 113, 133, 1)',
+        ],
+        borderWidth: 0,
+        hoverBackgroundColor: [
+          'rgba(56, 189, 248, 1)',
+          'rgba(251, 113, 133, 1)',
+        ],
+        hoverBorderColor: '#ffffff',
+        hoverBorderWidth: 2,
+        borderRadius: 6,
+        spacing: 8,
+        offset: 6,
+      },
+    ],
+  };
+
+  // Mock yearly data for the bar chart
+  const yearlyData = [
+    { year: 2020, profit: 150000, loss: 50000 },
+    { year: 2021, profit: 200000, loss: 30000 },
+    { year: 2022, profit: 250000, loss: 100000 },
+    { year: 2023, profit: 300000, loss: 150000 },
+    { year: 2024, profit: 350000, loss: 200000 }
+  ];
+
+  // Prepare bar chart data
+  const barChartData = {
+    labels: yearlyData.map(item => item.year),
+    datasets: [
+      {
+        label: 'Profit',
+        data: yearlyData.map(item => item.profit),
+        backgroundColor: 'rgba(56, 189, 248, 0.85)',
+        borderColor: 'rgba(56, 189, 248, 1)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Loss',
+        data: yearlyData.map(item => item.loss),
+        backgroundColor: 'rgba(251, 113, 133, 0.85)',
+        borderColor: 'rgba(251, 113, 133, 1)',
+        borderWidth: 1,
+      }
+    ],
+  };
+
+  // Chart options
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    radius: '85%',
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleFont: {
+          size: 16,
+          weight: 'bold'
+        },
+        bodyFont: {
+          size: 14
+        },
+        padding: 15,
+        cornerRadius: 8,
+        caretSize: 0,
+        borderColor: '#475569',
+        borderWidth: 0,
+        displayColors: false,
+        callbacks: {
+          label: (context) => {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+            const percentage = Math.round((value / total) * 100);
+            return `${label}: ₹${value.toLocaleString()} (${percentage}%)`;
+          },
+          labelTextColor: () => '#ffffff'
+        }
+      }
+    }
+  };
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: '#ffffff',
+          font: {
+            size: 12
+          }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#475569',
+        borderWidth: 1,
+        padding: 10,
+        callbacks: {
+          label: (context) => {
+            return `${context.dataset.label}: ₹${context.raw.toLocaleString()}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+        ticks: {
+          color: '#ffffff'
+        }
+      },
+      y: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+        ticks: {
+          color: '#ffffff',
+          callback: (value) => `₹${value.toLocaleString()}`
+        }
+      }
+    }
+  };
 
   // Group employees by job role and count active/inactive for each role
   const jobRoleSummary = emp.reduce((acc, employee) => {
@@ -19,7 +183,7 @@ const Home = () => {
     if (!acc[role]) {
       acc[role] = { active: 0, inactive: 0 };
     }
-    if (employee.status === "active") {
+    if (employee.status === "Active" || employee.status === "active") {
       acc[role].active += 1;
     } else {
       acc[role].inactive += 1;
