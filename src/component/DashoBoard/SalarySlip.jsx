@@ -6,6 +6,7 @@ import "jspdf-autotable"
 import companyLogo from "../../assets/company.jpeg"     // The company logo
 import WtlSign from "../../assets/WTL Sign.jpg"         // The WTL sign
 import axios from "axios"
+import { toast } from "react-hot-toast"
 
 // Helper: format date from "YYYY-MM-DD" to "DD-MM-YYYY"
 const formatDate = (dateStr) => {
@@ -106,34 +107,56 @@ export default function SalaryReport() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [s, setS] = useState(null)
+  const [showReport, setShowReport] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   // Colors
   const faintGreen = [220, 230, 195]
   const white = [255, 255, 255]
   const black = [0, 0, 0]
 
-  // Auto-fetch employee info when employeeName changes
-  useEffect(() => {
-    if (employeeName.trim() !== "") {
-      const fetchEmployeeInfo = async () => {
-        try {
-          const response = await axios.get(`http://localhost:8282/public/find/${employeeName}`)
-          setYearlyCTC(response.data.salary)
-          setS(response.data)
-        } catch (error) {
-          console.error("Error fetching employee info", error)
-        }
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`/public/find/${employeeName}`);
+      if (response.data) {
+        console.log("Employee found:", response.data);
+        setS(response.data);
+        setShowReport(true);
+      } else {
+        toast.error("Employee not found");
       }
-      fetchEmployeeInfo()
+    } catch (error) {
+      console.error("Error finding employee:", error);
+      toast.error("Failed to find employee");
+      setS(null);
+      setShowReport(false);
+    } finally {
+      setLoading(false);
     }
-  }, [employeeName])
+  };
+
+  const generatePDF = () => {
+    if (!employeeName || !startDate || !endDate) {
+      toast.error("Please fill all fields");
+      return;
+    }
+
+    setGenerating(true);
+    const pdfUrl = 
+      `/public/generateReport?employeeName=${employeeName}&startDate=${startDate}&endDate=${endDate}`;
+    
+    // Open the PDF in a new tab
+    window.open(pdfUrl, "_blank");
+    setGenerating(false);
+  };
 
   const handleSubmit = async () => {
     setLoading(true)
     setError(null)
     try {
       const response = await fetch(
-        `http://localhost:8282/public/generateReport?employeeName=${employeeName}&startDate=${startDate}&endDate=${endDate}`
+        `/public/generateReport?employeeName=${employeeName}&startDate=${startDate}&endDate=${endDate}`
       )
       if (!response.ok) {
         throw new Error("Failed to fetch salary report")

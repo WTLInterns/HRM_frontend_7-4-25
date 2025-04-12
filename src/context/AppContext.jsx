@@ -9,24 +9,112 @@ export const useApp = () => {
   return useContext(AppContext);
 };
 
-// Set up Axios defaults
-axios.defaults.withCredentials = false;
-// Set base URL
-axios.defaults.baseURL = 'http://localhost:8282';
+// Removed all axios defaults and configurations
 
-// Create an axios interceptor to add auth token to all requests
-axios.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
+// Mock static employee data
+const STATIC_EMPLOYEES = [
+  {
+    empId: 1,
+    firstName: "John",
+    lastName: "Doe",
+    email: "johndoe@example.com",
+    phone: 9876543210,
+    aadharNo: "1234 5678 9012",
+    panCard: "ABCDE1234F",
+    education: "graduate",
+    bloodGroup: "o+",
+    jobRole: "JAVA FULL STACK DEVELOPER",
+    gender: "male",
+    address: "123 Main St, Mumbai",
+    birthDate: "1990-01-15",
+    joiningDate: "2022-03-01",
+    status: "Active",
+    bankName: "State Bank of India",
+    bankAccountNo: "12345678901",
+    bankIfscCode: "SBIN0123456",
+    branchName: "Andheri",
+    salary: 65000,
+    company: "ABC Pvt Ltd",
+    roll: "EMPLOYEE"
   },
-  error => {
-    return Promise.reject(error);
+  {
+    empId: 2,
+    firstName: "Jane",
+    lastName: "Smith",
+    email: "janesmith@example.com",
+    phone: 8765432109,
+    aadharNo: "9876 5432 1098",
+    panCard: "FGHIJ5678K",
+    education: "post-graduate",
+    bloodGroup: "b+",
+    jobRole: "HR",
+    gender: "female",
+    address: "456 Park Avenue, Delhi",
+    birthDate: "1992-05-20",
+    joiningDate: "2021-06-15",
+    status: "Active",
+    bankName: "HDFC Bank",
+    bankAccountNo: "98765432109",
+    bankIfscCode: "HDFC0123456",
+    branchName: "Connaught Place",
+    salary: 75000,
+    company: "ABC Pvt Ltd",
+    roll: "EMPLOYEE"
+  },
+  {
+    empId: 3,
+    firstName: "Aditya",
+    lastName: "Jadhav",
+    email: "aditya.jadhav@example.com",
+    phone: 7654321098,
+    aadharNo: "8765 4321 0987",
+    panCard: "LMNOP6789Q",
+    education: "graduate",
+    bloodGroup: "a+",
+    jobRole: "MERN STACK DEVELOPER",
+    gender: "male",
+    address: "789 Tech Park, Pune",
+    birthDate: "1994-08-12",
+    joiningDate: "2023-01-10",
+    status: "Active",
+    bankName: "ICICI Bank",
+    bankAccountNo: "87654321098",
+    bankIfscCode: "ICIC0123456",
+    branchName: "Hinjewadi",
+    salary: 70000,
+    company: "ABC Pvt Ltd",
+    roll: "EMPLOYEE"
+  },
+  {
+    empId: 4,
+    firstName: "Priya",
+    lastName: "Sharma",
+    email: "priya.sharma@example.com",
+    phone: 6543210987,
+    aadharNo: "7654 3210 9876",
+    panCard: "QRSTU7890V",
+    education: "post-graduate",
+    bloodGroup: "ab+",
+    jobRole: "DIGITAL MARKETING INTERN",
+    gender: "female",
+    address: "101 Garden Road, Bangalore",
+    birthDate: "1996-11-25",
+    joiningDate: "2022-07-05",
+    status: "Inactive",
+    bankName: "Axis Bank",
+    bankAccountNo: "76543210987",
+    bankIfscCode: "UTIB0123456",
+    branchName: "Koramangala",
+    salary: 45000,
+    company: "ABC Pvt Ltd",
+    roll: "EMPLOYEE"
   }
-);
+];
+
+// Add error tracking to prevent duplicate notifications
+let lastErrorMessage = null;
+let lastErrorTime = 0;
+let errorCount = 0;
 
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
@@ -40,24 +128,22 @@ export const AppProvider = ({ children }) => {
       return null;
     }
   });
-  const [authToken, setAuthToken] = useState(
-    () => localStorage.getItem("token") || ""
-  );
-  const [emp, setEmp] = useState([]);
+  
+  const [emp, setEmp] = useState(STATIC_EMPLOYEES);
   const [role, setRole] = useState(user?.role || "");
-  const [loading, setLoading] = useState(true);
-  const [isProfitable, setIsProfitable] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isProfitable, setIsProfitable] = useState(true);
   const [companyBudget] = useState(1000000); // 10 lakh budget
   const [stats, setStats] = useState({
-    totalEmployees: emp.length,
-    activeEmployees: emp.filter(employee => employee.status === "Active" || employee.status === "active").length,
-    inactiveEmployees: emp.filter(employee => employee.status === "Inactive" || employee.status === "inactive").length,
-    totalSalary: emp.reduce((sum, employee) => sum + (parseFloat(employee.salary) || 0), 0),
-    activeSalary: emp.filter(e => e.status === "Active" || e.status === "active")
+    totalEmployees: STATIC_EMPLOYEES.length,
+    activeEmployees: STATIC_EMPLOYEES.filter(employee => employee.status === "Active" || employee.status === "active").length,
+    inactiveEmployees: STATIC_EMPLOYEES.filter(employee => employee.status === "Inactive" || employee.status === "inactive").length,
+    totalSalary: STATIC_EMPLOYEES.reduce((sum, employee) => sum + (parseFloat(employee.salary) || 0), 0),
+    activeSalary: STATIC_EMPLOYEES.filter(e => e.status === "Active" || e.status === "active")
       .reduce((sum, e) => sum + (parseFloat(e.salary) || 0), 0),
-    inactiveSalary: emp.filter(e => e.status === "Inactive" || e.status === "inactive")
+    inactiveSalary: STATIC_EMPLOYEES.filter(e => e.status === "Inactive" || e.status === "inactive")
       .reduce((sum, e) => sum + (parseFloat(e.salary) || 0), 0),
-    profitLoss: 1000000 - emp.reduce((sum, employee) => sum + (parseFloat(employee.salary) || 0), 0)
+    profitLoss: 1000000 - STATIC_EMPLOYEES.reduce((sum, employee) => sum + (parseFloat(employee.salary) || 0), 0)
   });
 
   const navigate = useNavigate();
@@ -74,57 +160,47 @@ export const AppProvider = ({ children }) => {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (authToken) {
-      localStorage.setItem("token", authToken);
-    } else {
-      localStorage.removeItem("token");
-    }
-  }, [authToken]);
-
   const loginUser = async (email, password) => {
     try {
-      // Determine which API endpoint to use based on email pattern or other logic
-      const loginEndpoint = email.includes("master") ? "/admin/login" : "/api/subadmin/login";
-      console.log("Using login endpoint:", loginEndpoint);
+      // Static login authentication
+      let userData = null;
       
-      // Send params in URL rather than request body to match @RequestParam in backend
-      const response = await axios.post(`${loginEndpoint}?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
-      
-      console.log("API Response:", response.data);
-      const { token, role } = response.data;
-      setAuthToken(token);
-      setUser({
-        ...response.data,
-        email: response.data.email || email,
-        role: role // Keep the original role from the response
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Login failed:", error);
-      if (error.response) {
-        console.log("Error response from server:", error.response);
-        toast.error(`Login failed: ${error.response.data?.message || 'Invalid credentials'}`);
-      } else if (error.request) {
-        toast.error("Network error: Server not responding");
+      // Master Admin login
+      if (email === "9763746539" && password === "9763746539") {
+        userData = {
+          id: 1,
+          email: "masteradmin@example.com",
+          role: "MASTER_ADMIN",
+          name: "Master Admin"
+        };
+      } 
+      // Sub Admin login
+      else if (email === "8080276014" && password === "8080276014") {
+        userData = {
+          id: 2,
+          email: "subadmin@example.com",
+          company: "ABC Pvt Ltd",
+          registercompanyname: "ABC Pvt Ltd",
+          role: "SUBADMIN",
+          name: "Sub Admin"
+        };
       } else {
-        toast.error(`Error: ${error.message}`);
+        throw new Error("Invalid credentials");
       }
+      
+      setUser(userData);
+      return userData;
+    } catch (error) {
       throw error;
     }
   };
 
   const saveUser = async (userData) => {
     try {
-      const response = await axios.post(
-        "http://localhost:8282/auth/register",
-        userData
-      );
-      const { token, user } = response.data;
-      setAuthToken(token);
-      setUser(user);
-      console.log(response.data);
-      return response.data;
+      // Simulate API response
+      setUser({...userData, id: Date.now()});
+      console.log("User saved:", userData);
+      return {user: userData};
     } catch (error) {
       console.error("Failed to save user:", error);
       throw error;
@@ -135,125 +211,70 @@ export const AppProvider = ({ children }) => {
     console.log("Explicit logout requested by user action");
     // Clear user data
     setUser(null);
-    setEmp([]);
+    setEmp(STATIC_EMPLOYEES);
     // Clear local storage
     localStorage.removeItem('user');
-    localStorage.removeItem('token');
     // Navigate to logout page with specific flag
     navigate('/logout', { state: { manualLogout: true } });
   };
 
   const fetchUserProfile = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const response = await axios.get("http://localhost:8282/auth/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUser(response.data);
-    } catch (error) {
-      console.error("Failed to fetch user profile:", error);
-    }
+    // Return static user profile
+    console.log("Fetching user profile (static)");
+    return user;
   };
 
   const forgotPassword = async (updatedUser) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const response = await axios.put(
-        "http://localhost:8282/auth/reset",
-        updatedUser,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("Password reset successful:", response.data);
-      setUser(response.data);
-    } catch (error) {
-      console.error(
-        "Failed to reset password:",
-        error.response?.data || error.message
-      );
-    }
+    // Simulate password reset
+    console.log("Password reset successful for:", updatedUser.email);
+    toast.success("Password reset successful");
+    return true;
   };
 
   const addEmp = async (userData) => {
     try {
-      // Convert types to match Java model expectations
-      const formattedData = {
+      // Generate a new ID
+      const newId = Math.max(...emp.map(e => e.empId)) + 1;
+      
+      // Create new employee object
+      const newEmployee = {
         ...userData,
+        empId: newId,
         phone: typeof userData.phone === 'string' ? parseInt(userData.phone, 10) : userData.phone,
         salary: typeof userData.salary === 'string' ? parseInt(userData.salary, 10) : userData.salary,
-        enabled: true,
-        username: userData.email,
-        accountNonLocked: true,
-        accountNonExpired: true,
-        credentialsNonExpired: true
+        status: userData.status || "Active",
+        roll: "EMPLOYEE",
+        company: userData.company || user?.registercompanyname || user?.company || "ABC Pvt Ltd",
+        registerCompanyName: userData.company || user?.registercompanyname || user?.company || "ABC Pvt Ltd",
+        subAdminId: user?.id || null,
+        subAdminName: user?.name || null
       };
       
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      };
+      // Add to local state
+      setEmp(prevEmp => [...prevEmp, newEmployee]);
       
-      console.log("Making API request to add employee:", formattedData);
-      // Use relative path since baseURL is now configured
-      const response = await axios.post('/public/addEmp', formattedData, config);
-      console.log("API response:", response);
+      // Update stats
+      calculateStats([...emp, newEmployee]);
       
-      // Update local state with the new employee
-      setEmp(prevEmp => [...prevEmp, response.data]);
-      // Dispatch an event to notify components that employees have been updated
-      window.dispatchEvent(new Event('employeesUpdated'));
+      // Success message
       toast.success("Employee added successfully!");
-      return response.data;
+      return newEmployee;
     } catch (error) {
-      console.error("Failed to add employee:", error);
-      // Show a more detailed error message
-      if (error.response) {
-        console.log("Error response from server:", error.response);
-        
-        if (error.response.status === 403) {
-          toast.error("Access denied. Please check your login credentials or permissions.");
-        } else {
-          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
-        }
-      } else if (error.request) {
-        // Request was made but no response received
-        toast.error("Network error: Cannot connect to the server. Is the backend running?");
-      } else {
-        // Other error
-        toast.error(`Error: ${error.message}`);
-      }
+      console.error("Error adding employee:", error);
+      toast.error("Failed to add employee");
       throw error;
     }
   };
 
   const createAttendance = async (attendanceData, email) => {
     try {
-      const response = await axios.post(
-        "http://localhost:8282/public/att",
-        attendanceData,
-        { params: { email } }
-      );
-      if (response.status === 201) {
-        console.log("Attendance created:", response.data);
-        return response.data;
-      } else {
-        throw new Error("Error creating attendance");
-      }
+      // Simulate API call
+      console.log("Creating attendance for:", email, attendanceData);
+      toast.success("Attendance created successfully");
+      return { id: Date.now(), ...attendanceData, email };
     } catch (err) {
-      console.error(
-        "Failed to create attendance:",
-        err.response?.data?.message || err.message
-      );
+      console.error("Failed to create attendance:", err.message);
+      toast.error("Failed to create attendance");
       throw err;
     }
   };
@@ -261,53 +282,23 @@ export const AppProvider = ({ children }) => {
   const fetchAllEmp = async () => {
     try {
       setLoading(true);
-      // Try to obtain a CSRF token first if the server uses CSRF protection
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      };
-      
-      console.log("Making API request to fetch employees...");
-      // Use relative path since baseURL is now configured
-      const response = await axios.get('/public/getAllEmp', config);
-      console.log("API response:", response);
-      
-      if (response.data) {
-        setEmp(response.data);
-        calculateStats(response.data);
-      } else {
-        console.warn("Empty response from getAllEmp API");
-      }
+      // Return static data with slight delay to simulate API call
+      setTimeout(() => {
+        setEmp(STATIC_EMPLOYEES);
+        calculateStats(STATIC_EMPLOYEES);
+        setLoading(false);
+      }, 500);
+      return STATIC_EMPLOYEES;
     } catch (error) {
-      console.error('Error fetching employees:', error);
-      // Show an error toast
-      if (error.response) {
-        // Server responded with an error status code
-        console.log("Error response from server:", error.response);
-        
-        if (error.response.status === 403) {
-          toast.error("Access denied. Please check your login credentials or permissions.");
-        } else {
-          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
-        }
-      } else if (error.request) {
-        // Request was made but no response received
-        toast.error("Network error: Cannot connect to the server. Is the backend running?");
-      } else {
-        // Other error
-        toast.error(`Error: ${error.message}`);
-      }
-    } finally {
       setLoading(false);
+      throw error;
     }
   };
 
   const calculateStats = (employees) => {
     try {
-      const activeEmployees = employees.filter(employee => employee.status === "active");
-      const inactiveEmployees = employees.filter(employee => employee.status === "inactive");
+      const activeEmployees = employees.filter(employee => employee.status === "Active" || employee.status === "active");
+      const inactiveEmployees = employees.filter(employee => employee.status === "Inactive" || employee.status === "inactive");
       
       const activeSalary = activeEmployees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
       const inactiveSalary = inactiveEmployees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
@@ -331,34 +322,6 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Prepare pie chart data
-  const pieChartData = {
-    labels: ['Active Salary', 'Inactive Salary'],
-    datasets: [
-      {
-        data: [stats.activeSalary, stats.inactiveSalary],
-        backgroundColor: [
-          'rgba(56, 189, 248, 0.85)',   // Sky blue for active
-          'rgba(251, 113, 133, 0.85)',  // Modern pink for inactive
-        ],
-        borderColor: [
-          'rgba(56, 189, 248, 1)',
-          'rgba(251, 113, 133, 1)',
-        ],
-        borderWidth: 0,
-        hoverBackgroundColor: [
-          'rgba(56, 189, 248, 1)',
-          'rgba(251, 113, 133, 1)',
-        ],
-        hoverBorderColor: '#ffffff',
-        hoverBorderWidth: 2,
-        borderRadius: 6,
-        spacing: 8,
-        offset: 6,
-      },
-    ],
-  };
-
   // Define yearlyData which was missing
   const yearlyData = [
     { year: '2020', profit: 80000, loss: 20000 },
@@ -368,244 +331,220 @@ export const AppProvider = ({ children }) => {
     { year: '2024', profit: 200000, loss: 40000 },
   ];
 
-  // Prepare bar chart data
-  const barChartData = {
-    labels: yearlyData.map(item => item.year),
-    datasets: [
-      {
-        label: 'Profit',
-        data: yearlyData.map(item => item.profit),
-        backgroundColor: 'rgba(56, 189, 248, 0.85)',
-        borderColor: 'rgba(56, 189, 248, 1)',
-        borderWidth: 1,
-      },
-      {
-        label: 'Loss',
-        data: yearlyData.map(item => item.loss),
-        backgroundColor: 'rgba(251, 113, 133, 0.85)',
-        borderColor: 'rgba(251, 113, 133, 1)',
-        borderWidth: 1,
-      }
-    ],
-  };
-
-  // Chart options
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '65%',
-    radius: '85%',
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        enabled: true,
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        titleFont: {
-          size: 16,
-          weight: 'bold'
-        },
-        bodyFont: {
-          size: 14
-        },
-        padding: 15,
-        cornerRadius: 8,
-        caretSize: 0,
-        borderColor: '#475569',
-        borderWidth: 0,
-        displayColors: false,
-        callbacks: {
-          label: (context) => {
-            const label = context.label || '';
-            const value = context.raw || 0;
-            const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-            const percentage = Math.round((value / total) * 100);
-            return `${label}: ₹${value.toLocaleString()} (${percentage}%)`;
-          },
-          labelTextColor: () => '#ffffff'
-        }
-      }
-    },
-    animation: {
-      animateRotate: true,
-      animateScale: true,
-      duration: 1500,
-      easing: 'easeOutCirc',
-      delay: (context) => context.dataIndex * 200
-    },
-    elements: {
-      arc: {
-        borderWidth: 0
-      }
-    }
-  };
-
-  const barChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: {
-          color: '#ffffff',
-          font: {
-            size: 12
-          }
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
-        borderColor: '#475569',
-        borderWidth: 1,
-        padding: 10,
-        callbacks: {
-          label: (context) => {
-            return `${context.dataset.label}: ₹${context.raw.toLocaleString()}`;
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
-        },
-        ticks: {
-          color: '#ffffff'
-        }
-      },
-      y: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
-        },
-        ticks: {
-          color: '#ffffff',
-          callback: (value) => `₹${value.toLocaleString()}`
-        }
-      }
-    }
-  };
+  // Other chart data remains unchanged...
 
   const deleteEmployee = async (empId) => {
     try {
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      };
+      // Remove from local array
+      setEmp(prevEmp => prevEmp.filter(emp => emp.empId !== empId));
       
-      console.log(`Making API request to delete employee with ID: ${empId}`);
-      // Use relative path since baseURL is now configured
-      await axios.delete(`/public/deleteEmp/${empId}`, config);
-      console.log("Employee deleted successfully");
+      // Update stats
+      const updatedEmployees = emp.filter(employee => employee.empId !== empId);
+      calculateStats(updatedEmployees);
       
       toast.success("Employee deleted successfully");
-      setEmp(prevEmp => prevEmp.filter(emp => emp.empId !== empId));
     } catch (error) {
       console.error("Failed to delete employee:", error);
-      // Show a more detailed error message
-      if (error.response) {
-        console.log("Error response from server:", error.response);
-        
-        if (error.response.status === 403) {
-          toast.error("Access denied. Please check your login credentials or permissions.");
-        } else {
-          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
-        }
-      } else if (error.request) {
-        toast.error("Network error: Cannot connect to the server. Is the backend running?");
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error("Failed to delete employee");
     }
   };
 
   const updateEmployee = async (empId, updatedData) => {
     try {
-      // Convert types to match Java model expectations
+      // Format data
       const formattedData = {
         ...updatedData,
         phone: typeof updatedData.phone === 'string' ? parseInt(updatedData.phone, 10) : updatedData.phone,
-        salary: typeof updatedData.salary === 'string' ? parseInt(updatedData.salary, 10) : updatedData.salary,
-        enabled: true,
-        username: updatedData.email,
-        accountNonLocked: true,
-        accountNonExpired: true,
-        credentialsNonExpired: true
+        salary: typeof updatedData.salary === 'string' ? parseInt(updatedData.salary, 10) : updatedData.salary
       };
       
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      };
-      
-      console.log(`Making API request to update employee with ID: ${empId}`, formattedData);
-      // Use relative path since baseURL is now configured
-      const response = await axios.put(`/public/update/${empId}`, formattedData, config);
-      console.log("API response:", response);
-      
+      // Update in local array
       setEmp(prevEmp => prevEmp.map(emp => 
-        emp.empId === empId ? response.data : emp
+        emp.empId === empId ? {...emp, ...formattedData} : emp
       ));
+      
+      // Update stats
+      const updatedEmployees = emp.map(employee => 
+        employee.empId === empId ? {...employee, ...formattedData} : employee
+      );
+      calculateStats(updatedEmployees);
+      
       toast.success("Employee updated successfully");
-      return response.data;
+      return {...updatedData, empId};
     } catch (error) {
       console.error("Failed to update employee:", error);
-      // Show a more detailed error message
-      if (error.response) {
-        console.log("Error response from server:", error.response);
-        
-        if (error.response.status === 403) {
-          toast.error("Access denied. Please check your login credentials or permissions.");
-        } else {
-          toast.error(`Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
-        }
-      } else if (error.request) {
-        toast.error("Network error: Cannot connect to the server. Is the backend running?");
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error("Failed to update employee");
       throw error;
     }
   };
 
   useEffect(() => {
+    // Initial load of employees
     fetchAllEmp();
   }, []);
 
   const value = {
-    user,
-    setUser,
-    authToken,
-    setAuthToken,
-    emp,
-    setEmp,
-    role,
-    setRole,
     loading,
-    setLoading,
-    isProfitable,
+    user,
+    emp,
     stats,
+    isProfitable,
     companyBudget,
     loginUser,
+    saveUser,
     logoutUser,
     fetchUserProfile,
     forgotPassword,
+    setUser,
     addEmp,
-    createAttendance,
-    fetchAllEmp,
     deleteEmployee,
     updateEmployee,
-    pieChartData,
-    barChartData,
-    chartOptions,
-    barChartOptions
+    createAttendance,
+    fetchAllEmp,
+    yearlyData,
+    // Keep all the chart data from existing context
+    pieChartData: {
+      labels: ['Active Salary', 'Inactive Salary'],
+      datasets: [
+        {
+          data: [stats.activeSalary, stats.inactiveSalary],
+          backgroundColor: [
+            'rgba(56, 189, 248, 0.85)',   // Sky blue for active
+            'rgba(251, 113, 133, 0.85)',  // Modern pink for inactive
+          ],
+          borderColor: [
+            'rgba(56, 189, 248, 1)',
+            'rgba(251, 113, 133, 1)',
+          ],
+          borderWidth: 0,
+          hoverBackgroundColor: [
+            'rgba(56, 189, 248, 1)',
+            'rgba(251, 113, 133, 1)',
+          ],
+          hoverBorderColor: '#ffffff',
+          hoverBorderWidth: 2,
+          borderRadius: 6,
+          spacing: 8,
+          offset: 6,
+        },
+      ],
+    },
+    barChartData: {
+      labels: yearlyData.map(item => item.year),
+      datasets: [
+        {
+          label: 'Profit',
+          data: yearlyData.map(item => item.profit),
+          backgroundColor: 'rgba(56, 189, 248, 0.85)',
+          borderColor: 'rgba(56, 189, 248, 1)',
+          borderWidth: 1,
+        },
+        {
+          label: 'Loss',
+          data: yearlyData.map(item => item.loss),
+          backgroundColor: 'rgba(251, 113, 133, 0.85)',
+          borderColor: 'rgba(251, 113, 133, 1)',
+          borderWidth: 1,
+        }
+      ],
+    },
+    chartOptions: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      radius: '85%',
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          titleFont: {
+            size: 16,
+            weight: 'bold'
+          },
+          bodyFont: {
+            size: 14
+          },
+          padding: 15,
+          cornerRadius: 8,
+          caretSize: 0,
+          borderColor: '#475569',
+          borderWidth: 0,
+          displayColors: false,
+          callbacks: {
+            label: (context) => {
+              const label = context.label || '';
+              const value = context.raw || 0;
+              const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+              const percentage = Math.round((value / total) * 100);
+              return `${label}: ₹${value.toLocaleString()} (${percentage}%)`;
+            },
+            labelTextColor: () => '#ffffff'
+          }
+        }
+      },
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 1500,
+        easing: 'easeOutCirc',
+        delay: (context) => context.dataIndex * 200
+      },
+      elements: {
+        arc: {
+          borderWidth: 0
+        }
+      }
+    },
+    barChartOptions: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color: '#ffffff',
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          borderColor: '#475569',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: (context) => {
+              return `${context.dataset.label}: ₹${context.raw.toLocaleString()}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          },
+          ticks: {
+            color: '#ffffff'
+          }
+        },
+        y: {
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          },
+          ticks: {
+            color: '#ffffff',
+            callback: (value) => `₹${value.toLocaleString()}`
+          }
+        }
+      }
+    }
   };
 
   return (

@@ -4,6 +4,8 @@ import { FaCheckCircle, FaTimes, FaCalendarAlt } from "react-icons/fa";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "./calendar-custom.css";
+import axios from "axios";
+import { toast } from "react-hot-toast";
 
 export default function Attendance() {
   // Component States
@@ -16,6 +18,7 @@ export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+  const [submitting, setSubmitting] = useState(false);
 
   // Status options for the dropdown
   const statusOptions = [
@@ -144,6 +147,9 @@ export default function Attendance() {
     }
 
     try {
+      setSubmitting(true);
+      setError(null);
+      
       // Store the count of selected dates before clearing them
       const selectedDatesCount = selectedDates.length;
       
@@ -153,19 +159,38 @@ export default function Attendance() {
         employeeName: employeeName
       }));
 
-      // Submit each attendance record
+      // Get the company name and authentication details from the logged-in user
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      const companyName = storedUser?.registercompanyname || storedUser?.company || "default";
+      const encodedCompanyName = encodeURIComponent(companyName);
+      
+      // Extract only the first name from the employee name input
+      // The backend findByEmployeeName method searches only by first name
+      const employeeNames = employeeName.trim().split(/\s+/);
+      const firstName = employeeNames[0];
+      const lastName = employeeNames.length > 1 ? 
+                       employeeNames.slice(1).join(' ') : '';
+      const encodedEmployeeName = encodeURIComponent(employeeName);
+      
+      console.log("Using first name for API call:", firstName);
+      
+      // Set up request configuration with authentication headers
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: true // Important for cookie-based authentication
+      };
+      
+      // Submit each attendance record using the new API endpoint
       const submissionPromises = updatedRecords
         .filter(record => selectedDates.includes(record.date))
         .map(record => 
-          fetch("http://localhost:8282/public/att", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              employee: { firstName: employeeName },
-              date: record.date,
-              status: record.status,
-            }),
-          })
+          axios.post(`/api/subadmin/employee/${encodedCompanyName}/${encodedEmployeeName}/attendance/add`, {
+            date: record.date,
+            status: record.status,
+          }, config)
         );
 
       await Promise.all(submissionPromises);
@@ -180,10 +205,26 @@ export default function Attendance() {
       setSelectedDates([]);
       setAttendanceRecords([]);
       setShowCalendar(false);
+      setSubmitting(false);
       
     } catch (error) {
+      setSubmitting(false);
       console.error("Error marking attendance:", error);
-      setError("Error marking attendance");
+      
+      // Handle different error cases
+      if (error.response) {
+        if (error.response.status === 403) {
+          setError("Access denied. Please check your login credentials or permissions.");
+        } else if (error.response.status === 401) {
+          setError("Unauthorized. Please log in again.");
+        } else {
+          setError(error.response.data || `Server error: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        setError("Network error: Cannot connect to the server. Is the backend running?");
+      } else {
+        setError(`Error: ${error.message}`);
+      }
     }
   };
 
@@ -348,9 +389,19 @@ export default function Attendance() {
               <div className="flex gap-4">
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-lg"
                 >
-                  <FaCheckCircle /> Submit Attendance
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <FaCheckCircle /> Submit Attendance
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"

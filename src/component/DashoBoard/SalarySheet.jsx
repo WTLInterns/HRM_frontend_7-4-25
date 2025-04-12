@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const SalarySheet = () => {
   const [employees, setEmployees] = useState([]);
@@ -7,24 +8,20 @@ const SalarySheet = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    async function fetchSalaryData() {
       try {
-        const response = await fetch(
-          "http://localhost:8282/public/getAllSalary"
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch data");
-        }
-        const data = await response.json();
-        setEmployees(data);
-      } catch (err) {
-        setError(err.message);
+        setLoading(true);
+        const response = await axios.get("/public/getAllSalary");
+        setEmployees(response.data);
+      } catch (error) {
+        console.error("Error fetching salary data:", error);
+        setError("Failed to load salary data");
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchEmployees();
+    fetchSalaryData();
   }, []);
 
   if (loading) {

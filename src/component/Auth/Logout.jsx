@@ -16,7 +16,6 @@ const Logout = () => {
       
       // Clear specific auth items first for better debugging/logging
       localStorage.removeItem("user");
-      localStorage.removeItem("token");
       localStorage.removeItem("resetEmail");
       localStorage.removeItem("resetOtp");
       

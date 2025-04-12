@@ -39,15 +39,6 @@ const Dashboard = () => {
     profitLoss: 0
   });
 
-  // Mock yearly data for the bar chart
-  const yearlyData = [
-    { year: 2020, profit: 150000, loss: 50000 },
-    { year: 2021, profit: 200000, loss: 30000 },
-    { year: 2022, profit: 250000, loss: 100000 },
-    { year: 2023, profit: 300000, loss: 150000 },
-    { year: 2024, profit: 350000, loss: 200000 }
-  ];
-
   useEffect(() => {
     if (!emp || emp.length === 0) {
       fetchAllEmp();
@@ -124,6 +115,15 @@ const Dashboard = () => {
       },
     ],
   };
+
+  // Define yearlyData for the bar chart
+  const yearlyData = [
+    { year: '2020', profit: 80000, loss: 20000 },
+    { year: '2021', profit: 90000, loss: 15000 },
+    { year: '2022', profit: 120000, loss: 25000 },
+    { year: '2023', profit: 150000, loss: 30000 },
+    { year: '2024', profit: 200000, loss: 40000 },
+  ];
 
   // Prepare bar chart data
   const barChartData = {
@@ -311,11 +311,12 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-900 to-blue-900 text-gray-100">
+      
       {/* Mobile menu button - only visible on small screens */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
           onClick={toggleMobileMenu}
-          className="p-2 rounded-md bg-blue-800 text-white hover:bg-blue-700 transition-all duration-300 shadow-md"
+          className="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
         >
           {mobileMenuOpen ? <HiX size={24} /> : <HiMenu size={24} />}
         </button>
@@ -417,6 +418,22 @@ const Dashboard = () => {
         ></div>
       )}
 
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-4">
+        {/* Add top padding on mobile to account for the fixed header */}
+        <div className="pt-16 lg:pt-0 h-full page-transition-container animate-fadeIn">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="addEmp" element={<AddEmp />} />
+            <Route path="attendance" element={<Attendance />} />
+            <Route path="salarysheet" element={<SalarySheet />} />
+            <Route path="salaryslip" element={<SalarySlip />} />
+            <Route path="viewAtt" element={<ViewAttendance />} />
+            <Route path="profileform" element={<ProfileForm />} />
+          </Routes>
+        </div>
+      </main>
+
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
@@ -459,22 +476,6 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4">
-        {/* Add top padding on mobile to account for the fixed header */}
-        <div className="pt-16 lg:pt-0 h-full page-transition-container animate-fadeIn">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="addEmp" element={<AddEmp />} />
-            <Route path="attendance" element={<Attendance />} />
-            <Route path="salarysheet" element={<SalarySheet />} />
-            <Route path="salaryslip" element={<SalarySlip />} />
-            <Route path="viewAtt" element={<ViewAttendance />} />
-            <Route path="profileform" element={<ProfileForm />} />
-          </Routes>
-        </div>
-      </main>
     </div>
   );
 };

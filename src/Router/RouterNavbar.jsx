@@ -38,7 +38,6 @@ const RouterNavbar = () => {
     console.log("RouterNavbar - Current path:", location.pathname);
     console.log("RouterNavbar - Current user:", user);
     console.log("RouterNavbar - localStorage user:", localStorage.getItem("user"));
-    console.log("RouterNavbar - localStorage token:", !!localStorage.getItem("token"));
   }, [location, user]);
 
   return (

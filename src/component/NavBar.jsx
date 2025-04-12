@@ -7,7 +7,6 @@ const NavBar = () => {
   const [user, setUser] = useState(null);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
     toast.success("Logout successfully");

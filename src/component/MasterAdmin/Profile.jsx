@@ -1,23 +1,74 @@
 import React, { useState, useEffect } from "react";
-import { FaUser, FaEnvelope, FaPhone, FaBuilding, FaEdit, FaSave, FaTimes, FaCheckCircle } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaPhone, FaBuilding, FaEdit, FaSave, FaTimes, FaCheckCircle, FaLock, FaImage } from "react-icons/fa";
 import "../DashoBoard/animations.css";
+import axios from "axios";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
-  const [userData, setUserData] = useState({
-    name: "Master Admin",
-    email: "admin@example.com",
-    phone: "123-456-7890",
-    organization: "HRM System",
-    role: "Master Administrator"
+  const [userData, setUserData] = useState(null);
+  const [formData, setFormData] = useState({
+    id: "",
+    name: "",
+    email: "",
+    mobileno: "",
+    password: "",
+    roll: "MASTER_ADMIN",
+    profileImg: ""
   });
-  const [formData, setFormData] = useState({ ...userData });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+
+  // Load user data from localStorage or API on component mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      
+      setUserData(parsedUser);
+      
+      // Initialize the form with current user data
+      setFormData({
+        id: parsedUser.id || "",
+        name: parsedUser.name || "",
+        email: parsedUser.email || "",
+        mobileno: parsedUser.mobileno || "",
+        password: "", // Password field starts empty for security
+        roll: parsedUser.roll || parsedUser.role || "MASTER_ADMIN",
+        profileImg: parsedUser.profileImg || ""
+      });
+      
+      // Set preview image if available
+      if (parsedUser.profileImg) {
+        setPreviewImage(`http://localhost:8282/images/${parsedUser.profileImg}`);
+      }
+    }
+  }, []);
 
   const handleEditToggle = () => {
     if (isEditing) {
-      // Discard changes
-      setFormData({ ...userData });
+      // Discard changes and reset form
+      if (userData) {
+        setFormData({
+          id: userData.id || "",
+          name: userData.name || "",
+          email: userData.email || "",
+          mobileno: userData.mobileno || "",
+          password: "", // Reset password field
+          roll: userData.roll || userData.role || "MASTER_ADMIN",
+          profileImg: userData.profileImg || ""
+        });
+        
+        // Reset image preview
+        if (userData.profileImg) {
+          setPreviewImage(`http://localhost:8282/images/${userData.profileImg}`);
+        } else {
+          setPreviewImage(null);
+        }
+        setSelectedFile(null);
+      }
     }
     setIsEditing(!isEditing);
   };
@@ -30,19 +81,98 @@ const Profile = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Save changes
-    setUserData({ ...formData });
-    setIsEditing(false);
+    setLoading(true);
+    setError("");
     
-    // Show success modal instead of alert
-    setShowSuccessModal(true);
-    
-    // Auto-hide the success modal after 3 seconds
-    setTimeout(() => {
-      setShowSuccessModal(false);
-    }, 3000);
+    try {
+      // Create form data for multipart/form-data
+      const formDataToSend = new FormData();
+      formDataToSend.append("id", formData.id);
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("email", formData.email);
+      formDataToSend.append("mobileno", formData.mobileno);
+      formDataToSend.append("roll", formData.roll);
+      
+      // Only include password if it's provided
+      if (formData.password) {
+        formDataToSend.append("password", formData.password);
+      } else {
+        // Use the existing password if not changed
+        formDataToSend.append("password", userData.password || ""); 
+      }
+      
+      // Include profile image if selected
+      if (selectedFile) {
+        formDataToSend.append("profileImg", selectedFile);
+      }
+      
+      // Make API call
+      const response = await axios.put(
+        "http://localhost:8282/masteradmin/update",
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        }
+      );
+      
+      console.log("Profile updated:", response.data);
+      
+      // Update local data
+      const updatedUser = response.data;
+      setUserData(updatedUser);
+      
+      // Update localStorage
+      const currentUser = JSON.parse(localStorage.getItem("user"));
+      const updatedUserForStorage = {
+        ...currentUser,
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        mobileno: updatedUser.mobileno,
+        role: updatedUser.roll, // Map roll to role for frontend consistency
+        profileImg: updatedUser.profileImg
+      };
+      localStorage.setItem("user", JSON.stringify(updatedUserForStorage));
+      
+      // Add a trigger for sidebar to update
+      sessionStorage.setItem("profileUpdated", Date.now().toString());
+      
+      // Update the preview image with the new image path
+      if (updatedUser.profileImg) {
+        setPreviewImage(`http://localhost:8282/images/${updatedUser.profileImg}`);
+      }
+      
+      setIsEditing(false);
+      setShowSuccessModal(true);
+      
+      // Auto-hide the success modal after 3 seconds
+      setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      setError("Failed to update profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,7 +231,47 @@ const Profile = () => {
         </button>
       </div>
       
+      {error && (
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-md">
+          <p className="text-red-300 text-sm">{error}</p>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Profile Image */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative w-32 h-32 mb-4">
+            <div className="w-full h-full rounded-full overflow-hidden bg-slate-700 border-2 border-blue-500">
+              {previewImage ? (
+                <img 
+                  src={previewImage} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                  <FaUser className="text-slate-400 text-4xl" />
+                </div>
+              )}
+            </div>
+            {isEditing && (
+              <label 
+                htmlFor="profileImg" 
+                className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-500 transition-colors"
+              >
+                <FaEdit />
+                <input 
+                  id="profileImg" 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleFileChange}
+                />
+              </label>
+            )}
+          </div>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Name */}
           <div className="space-y-2">
@@ -153,20 +323,20 @@ const Profile = () => {
             </div>
           </div>
           
-          {/* Phone */}
+          {/* Mobile Number */}
           <div className="space-y-2">
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
-              Phone Number
+            <label htmlFor="mobileno" className="block text-sm font-medium text-gray-300">
+              Mobile Number
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FaPhone className="text-blue-400" />
               </div>
               <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
+                type="text"
+                id="mobileno"
+                name="mobileno"
+                value={formData.mobileno}
                 onChange={handleChange}
                 disabled={!isEditing}
                 className={`pl-10 block w-full rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 py-3 transition-all duration-300 ${
@@ -178,40 +348,48 @@ const Profile = () => {
             </div>
           </div>
           
-          {/* Organization */}
-          <div className="space-y-2">
-            <label htmlFor="organization" className="block text-sm font-medium text-gray-300">
-              Organization
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaBuilding className="text-blue-400" />
+          {/* Password (only shown when editing) */}
+          {isEditing && (
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+                Password (leave empty to keep current)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaLock className="text-blue-400" />
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter new password"
+                  className="pl-10 block w-full rounded-md bg-slate-700 border border-slate-600 text-gray-100 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 py-3 transition-all duration-300"
+                />
               </div>
-              <input
-                type="text"
-                id="organization"
-                name="organization"
-                value={formData.organization}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`pl-10 block w-full rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 py-3 transition-all duration-300 ${
-                  isEditing 
-                    ? "bg-slate-700 border border-slate-600 text-gray-100" 
-                    : "bg-slate-800 border border-slate-700 text-gray-300 cursor-not-allowed"
-                }`}
-              />
             </div>
-          </div>
+          )}
         </div>
         
         {isEditing && (
           <div className="flex justify-end">
             <button
               type="submit"
+              disabled={loading}
               className="px-6 py-3 bg-gradient-to-r from-green-700 to-green-600 hover:from-green-600 hover:to-green-500 text-white rounded-md shadow-md transition-all duration-300 flex items-center gap-2"
             >
-              <FaSave size={16} />
-              <span>Save Changes</span>
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <>
+                  <FaSave size={16} />
+                  <span>Save Changes</span>
+                </>
+              )}
             </button>
           </div>
         )}

@@ -5,6 +5,7 @@ import axios from "axios";
 import "./calendar-custom.css"; // Import custom calendar styles
 import "./animations.css";
 import { FaCalendarAlt, FaUserCheck, FaSearch, FaTimes } from 'react-icons/fa';
+import { toast } from "react-hot-toast";
 
 export default function ViewAttendance() {
   // Component States
@@ -45,32 +46,16 @@ export default function ViewAttendance() {
     setError("");
 
     try {
-      // Encode the employee name to handle spaces and special characters
       const encodedName = encodeURIComponent(empId);
-      // Use getAttendanceByName endpoint which accepts employee names
-      const response = await axios.get(`http://localhost:8282/public/getAttendanceByName/${encodedName}`);
-      
-      console.log("API Response:", response.data); // Debug log
-      
-      if (response.data && response.data.length > 0) {
-        // Normalize attendance data to match format expected by calendar
-        const normalizedData = response.data.map(record => ({
-          ...record,
-          // Ensure dates have consistent format
-          date: new Date(record.date).toISOString().split('T')[0],
-          // Normalize status (capitalize first letter)
-          status: record.status.charAt(0).toUpperCase() + record.status.slice(1).toLowerCase()
-        }));
-        
-        setAttendanceData(normalizedData);
-        setEmpName(normalizedData[0].employee?.firstName || "Employee");
-      } else {
-        setError("No attendance records found for this employee.");
-        setAttendanceData([]);
-        setEmpName("");
-      }
+      console.log(`Fetching attendance for ${encodedName}`);
+      const response = await axios.get(`/public/getAttendanceByName/${encodedName}`);
+      console.log("Attendance data:", response.data);
+      setAttendanceData(response.data);
+      setEmpName(response.data[0]?.employee?.firstName || "Employee");
+      updateStats(response.data);
     } catch (error) {
       console.error("Error fetching attendance:", error);
+      toast.error("Failed to load attendance data");
       setError(`Error fetching attendance data: ${error.message}`);
       setAttendanceData([]);
     } finally {

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../DashoBoard/animations.css";
 import { FaCalendarAlt, FaSearch } from "react-icons/fa";
+import axios from "axios";
 
 const ViewAttendance = () => {
   const [empId, setEmpId] = useState("");
@@ -12,31 +13,30 @@ const ViewAttendance = () => {
     setEmpId(e.target.value);
   };
 
-  const fetchAttendance = async () => {
-    if (!empId) {
-      setError("Please enter a valid employee ID");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch(
-        `http://localhost:8282/public/getAllAttendace/${empId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setAttendanceData(data);
-      } else {
-        setError("No attendance records found for this employee.");
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      if (!empId) return;
+      
+      try {
+        setLoading(true);
+        const response = await axios.get(`/public/getAllAttendace/${empId}`);
+        
+        if (response.data && response.data.length > 0) {
+          setAttendanceData(response.data);
+          calculateStats(response.data);
+        } else {
+          setAttendanceData([]);
+        }
+      } catch (error) {
+        console.error("Error fetching attendance data:", error);
+        setError("Failed to load attendance data");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      setError("Error fetching attendance data.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchAttendanceData();
+  }, [empId]);
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100 animate-fadeIn page-container">

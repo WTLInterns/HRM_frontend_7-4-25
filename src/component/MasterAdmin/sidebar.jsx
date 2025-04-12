@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FaHome,
@@ -19,9 +19,52 @@ import { useApp } from "../../context/AppContext";
 const Sidebar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [profileImg, setProfileImg] = useState(null);
+  const [userName, setUserName] = useState("Master Admin");
   const location = useLocation();
   const navigate = useNavigate();
   const { logoutUser } = useApp();
+  
+  // Load user data and profile image from localStorage
+  useEffect(() => {
+    loadUserProfile();
+    
+    // Add event listener to detect profile updates
+    const handleStorageChange = () => {
+      const profileUpdated = sessionStorage.getItem("profileUpdated");
+      if (profileUpdated) {
+        // Clear the flag
+        sessionStorage.removeItem("profileUpdated");
+        // Reload the profile
+        loadUserProfile();
+      }
+    };
+    
+    // Check for updates every second
+    const intervalId = setInterval(handleStorageChange, 1000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+  
+  // Function to load user profile from localStorage
+  const loadUserProfile = () => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser.profileImg) {
+          setProfileImg(`http://localhost:8282/images/profile${parsedUser.profileImg}`);
+        }
+        if (parsedUser.name) {
+          setUserName(parsedUser.name);
+        }
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+  };
   
   const toggleDropdown = () => {
     setDropdownOpen(!dropdownOpen);
@@ -105,17 +148,21 @@ const Sidebar = () => {
       {/* Header */}
       <div className="flex flex-col items-center py-6 border-b border-slate-700">
         <div className="h-24 w-24 rounded-full border-4 border-white/20 overflow-hidden mb-4 shadow-lg bg-blue-900/50 flex items-center justify-center">
-          <img
-            src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-4.0.3&auto=format&fit=crop&w=120&h=120&q=80"
-            alt="Admin"
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%233B82F6'/%3E%3Ctext x='50%25' y='50%25' font-size='60' text-anchor='middle' dy='.3em' fill='white'%3EH%3C/text%3E%3C/svg%3E`;
-            }}
-          />
+          {profileImg ? (
+            <img
+              src={profileImg}
+              alt="Admin"
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%233B82F6'/%3E%3Ctext x='50%25' y='50%25' font-size='60' text-anchor='middle' dy='.3em' fill='white'%3E${userName.charAt(0)}%3C/text%3E%3C/svg%3E`;
+              }}
+            />
+          ) : (
+            <FaUser className="text-white/70 text-4xl" />
+          )}
         </div>
-        <h1 className="text-xl font-bold text-center">Master-Admin HRM</h1>
+        <h1 className="text-xl font-bold text-center">{userName}</h1>
         <p className="text-blue-400 text-sm">Dashboard</p>
       </div>
 

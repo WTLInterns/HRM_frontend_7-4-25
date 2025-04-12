@@ -21,6 +21,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [fromLogout, setFromLogout] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Clear form fields on initial load and check if coming from logout
   useEffect(() => {
@@ -37,7 +38,6 @@ const Login = () => {
       // Clear any localStorage remainders to ensure clean login state
       console.log("Clearing localStorage items due to logout redirect");
       localStorage.removeItem("user");
-      localStorage.removeItem("token");
       
       // Additional clean up for any other items if needed
       // localStorage.removeItem("otherItem");
@@ -51,181 +51,112 @@ const Login = () => {
 
   // Handle user state changes and redirections
   useEffect(() => {
-    console.log("User state changed in Login component");
-    console.log("Current user:", user);
-    console.log("fromLogout flag:", fromLogout);
-    
-    // Skip redirection if we just came from logout
-    if (fromLogout) {
-      console.log("Skipping redirection as we came from logout");
-      return;
-    }
-    
-    // Check for existing login
     try {
-      const storedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
-      console.log("Stored user from localStorage:", storedUser);
-      console.log("Token exists in localStorage:", !!token);
+      console.log("Login Component - Initial Render");
       
-      // Only redirect if both user and token exist
-      if (storedUser && token) {
+      // Don't run redirect logic if coming from logout page
+      if (fromLogout) {
+        console.log("User is coming from logout, staying on login page");
+        return;
+      }
+      
+      // Check localStorage for existing user data
+      const storedUser = localStorage.getItem("user");
+      
+      if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          console.log("Parsed user from localStorage:", parsedUser);
+          console.log("Found user in localStorage:", parsedUser);
           
-          // Validate that the user object has required properties
-          if (!parsedUser || !parsedUser.role) {
-            console.log("Invalid user data in localStorage, clearing...");
-            localStorage.removeItem("user");
-            localStorage.removeItem("token");
-            return;
-          }
-          
-          if (parsedUser.role === "MASTER_ADMIN") {
-            console.log("Found stored Master Admin user, redirecting to /masteradmin");
-            navigate("/masteradmin");
-            return;
-          } else if (parsedUser.role === "SUBADMIN") {
-            console.log("Found stored SUB_ADMIN user, redirecting to /dashboard");
+          if (parsedUser.role === "SUBADMIN") {
             navigate("/dashboard");
-            return;
           } else if (parsedUser.role === "EMPLOYEE") {
-            console.log("Found stored Employee user, redirecting to /userDashboard");
             navigate("/userDashboard");
-            return;
-          } else {
-            console.log("Unknown user role in localStorage:", parsedUser.role);
+          } else if (parsedUser.role === "MASTER_ADMIN") {
+            navigate("/masteradmin");
           }
         } catch (parseError) {
           console.error("Error parsing user from localStorage:", parseError);
           // Clear invalid JSON data
           localStorage.removeItem("user");
-          localStorage.removeItem("token");
         }
-      } else {
-        console.log("Missing user or token in localStorage, staying on login page");
       }
 
       // Check context user if localStorage check didn't redirect
       if (user) {
-        console.log("User found in context, role:", user.role);
         if (user.role === "SUBADMIN") {
-          console.log("Redirecting to /dashboard");
           navigate("/dashboard");
         } else if (user.role === "EMPLOYEE") {
-          console.log("Redirecting to /userDashboard");
           navigate("/userDashboard");
         } else if (user.role === "MASTER_ADMIN") {
-          console.log("Redirecting to /masteradmin");
           navigate("/masteradmin");
-        } else {
-          console.log("Unknown user role:", user.role);
         }
-      } else {
-        console.log("No user found in context, staying on login page");
       }
     } catch (error) {
       console.error("Error in Login useEffect:", error);
       // Clear potentially corrupted data
       localStorage.removeItem("user");
-      localStorage.removeItem("token");
     }
   }, [user, navigate, fromLogout]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
-
-    console.log("Login attempt with:", email, password);
-
+    
     try {
-      console.log("Attempting login through API...");
+      setIsSubmitting(true);
+      setLoading(true);
       
-      // Determine API endpoint based on email domain or other logic
-      // This is a simple example - you may need more complex logic
-      const loginEndpoint = email.includes("master") ? "/admin/login" : "/api/subadmin/login";
-      console.log("Using login endpoint:", loginEndpoint);
+      // Basic API call without any special configuration
+      // Use the exact URL format that works with your backend
+      const response = await axios.post(`http://localhost:8282/masteradmin/login?email=${email}&password=${password}`);
       
-      // Send params in URL rather than request body to match @RequestParam in backend
-      const response = await axios.post(`${loginEndpoint}?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+      const data = response.data;
+      console.log("Login response:", data);
       
-      console.log("Login API response:", response);
-      
-      if (response.data) {
-        // Format user data from API response
+      if (data) {
+        // Convert 'roll' to 'role' for frontend consistency
         const userData = {
-          ...response.data,
-          // Keep the role as provided by the API - don't override
-          role: response.data.role,
-          firstName: response.data.name || response.data.firstName || "User",
-          lastName: response.data.lastname || response.data.lastName || ""
+          ...data,
+          role: data.roll
         };
         
-        // Save to localStorage first (before setting user in context)
+        console.log("Login successful:", userData);
+        
+        // Save user data to localStorage
         localStorage.setItem("user", JSON.stringify(userData));
-        localStorage.setItem("token", response.data.token || "demo-token");
-        console.log("User data saved to localStorage:", userData);
         
-        // Set fromLogout to false so redirection can happen
-        setFromLogout(false);
+        // Set the user in context
+        setUser(userData);
         
-        // Set in context
-        if (setUser) {
-          setUser(userData);
-          console.log("User set in context:", userData);
-        } else {
-          console.error("setUser function is not available");
-        }
-        
-        // Show success modal
+        // Show success message
         setSuccessMessage(`Login successful! Welcome to your dashboard.`);
         setShowSuccessModal(true);
         
-        // Wait a little longer before redirecting to ensure state propagation
+        // Navigate based on role after a delay
         setTimeout(() => {
-          try {
-            console.log("About to navigate based on role:", userData.role);
-            setShowSuccessModal(false);
-            setLoading(false);
-            
-            // Navigate based on role
-            if (userData.role === "MASTER_ADMIN") {
-              navigate("/masteradmin", { replace: true });
-            } else if (userData.role === "SUBADMIN") {
-              navigate("/dashboard", { replace: true });
-            } else if (userData.role === "EMPLOYEE") {
-              navigate("/userDashboard", { replace: true });
-            } else {
-              // Default fallback
-              navigate("/dashboard", { replace: true });
-            }
-          } catch (navError) {
-            console.error("Navigation error:", navError);
+          setShowSuccessModal(false);
+          setLoading(false);
+          
+          if (userData.role === "MASTER_ADMIN") {
+            navigate("/masteradmin", { replace: true });
+          } else if (userData.role === "SUBADMIN") {
+            navigate("/dashboard", { replace: true });
+          } else {
+            navigate("/dashboard", { replace: true });
           }
-        }, 2500);
+        }, 2000);
         
-        return;
       } else {
-        throw new Error("Empty response from login API");
+        throw new Error("Invalid response from server");
       }
     } catch (error) {
-      console.error("Error in handleSubmit:", error);
+      console.error("Login error:", error);
+      setIsSubmitting(false);
       setLoading(false);
       
-      // Handle specific error messages
-      if (error.response) {
-        const errorMessage = error.response.data?.message || "Invalid credentials";
-        setError(errorMessage);
-        toast.error(`Login failed: ${errorMessage}`);
-      } else if (error.request) {
-        setError("Network error: Server not responding");
-        toast.error("Network error: Server not responding");
-      } else {
-        setError(`Error: ${error.message}`);
-        toast.error(`Error: ${error.message}`);
-      }
+      // Handle error
+      setError("Invalid email or password. Please try again.");
     }
   };
 
@@ -269,8 +200,7 @@ const Login = () => {
     return () => {
       console.log("Login component unmounting, current user:", user);
       console.log("Login localStorage on unmount:", {
-        user: localStorage.getItem("user"),
-        token: !!localStorage.getItem("token")
+        user: localStorage.getItem("user")
       });
     };
   }, [user]);
