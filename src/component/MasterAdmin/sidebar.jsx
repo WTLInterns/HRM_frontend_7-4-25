@@ -54,11 +54,16 @@ const Sidebar = () => {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        if (parsedUser.profileImg) {
-          setProfileImg(`http://localhost:8282/images/profile${parsedUser.profileImg}`);
-        }
+        
+        // Set the user's name
         if (parsedUser.name) {
           setUserName(parsedUser.name);
+        }
+        
+        // Use the email to build the profile image URL
+        if (parsedUser.email) {
+          const imageUrl = `http://localhost:8282/masteradmin/profileImg?email=${parsedUser.email}`;
+          setProfileImg(imageUrl);
         }
       } catch (error) {
         console.error("Error parsing user data:", error);

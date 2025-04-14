@@ -15,7 +15,6 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [passwordUpdated, setPasswordUpdated] = useState(false);
-  const [userId, setUserId] = useState(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [invalidOtp, setInvalidOtp] = useState(false);
@@ -32,29 +31,6 @@ const ResetPassword = () => {
     
     setEmail(resetEmail);
     console.log("Retrieved email from localStorage:", resetEmail);
-    
-    // Get the user ID by email (we need it for update-password/{id})
-    const fetchUserId = async () => {
-      try {
-        console.log("Fetching user with email:", resetEmail);
-        const response = await axios.get(`/api/subadmin/subadminbygamil/${resetEmail}`);
-        console.log("User fetch response:", response.data);
-        
-        if (response.data && response.data.id) {
-          setUserId(response.data.id);
-          console.log("User ID set:", response.data.id);
-        } else {
-          console.error("User ID not found in response:", response.data);
-          throw new Error("User not found");
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error.response || error);
-        toast.error("Could not find user account. Please try again.");
-        navigate("/forgot-password");
-      }
-    };
-    
-    fetchUserId();
   }, [navigate]);
 
   // Handle password reset submission
@@ -79,47 +55,18 @@ const ResetPassword = () => {
       return;
     }
     
-    if (!userId) {
-      setError("User ID not found. Please restart the process.");
-      return;
-    }
-    
     setLoading(true);
     
     try {
       console.log("Verifying OTP - Email:", email, "OTP:", otp);
       
-      // First verify OTP with the new password
-      try {
-        const verifyResponse = await axios.post("/api/subadmin/forgot-password/verify", 
-          null,
-          { 
-            params: { 
-              email,
-              otp,
-              newPassword
-            }
-          }
-        );
-        
-        console.log("OTP verification response:", verifyResponse);
-      } catch (otpError) {
-        console.error("OTP verification failed:", otpError.response || otpError);
-        setInvalidOtp(true);
-        setError(otpError.response?.data || "Invalid OTP. Please check and try again.");
-        setLoading(false);
-        return;
-      }
-      
-      // Then update the password in the database
-      console.log("Updating password for user ID:", userId);
-      const updateResponse = await axios.put(`/api/subadmin/update-password/${userId}`, 
-        null,
-        { params: { newPassword } }
+      // Verify OTP and reset password in one step using the MasterAdmin API
+      const response = await axios.post(
+        `http://localhost:8282/masteradmin/forgot-password/verify?email=${email}&otp=${otp}&newPassword=${newPassword}`
       );
       
-      console.log("Password update response:", updateResponse);
-      toast.success("Password updated successfully!");
+      console.log("Password reset response:", response.data);
+      toast.success("Password reset successful!");
       setPasswordUpdated(true);
       setLoading(false);
       
@@ -133,8 +80,8 @@ const ResetPassword = () => {
       }, 2000);
     } catch (error) {
       console.error("Error resetting password:", error.response || error);
-      setError(error.response?.data || "Failed to reset password. Please try again.");
-      toast.error(error.response?.data || "Failed to reset password");
+      setInvalidOtp(true);
+      setError(error.response?.data || "Invalid OTP or password reset failed. Please try again.");
       setLoading(false);
     }
   };

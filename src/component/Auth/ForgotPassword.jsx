@@ -20,9 +20,8 @@ const ForgotPassword = () => {
 
     try {
       console.log("Requesting OTP for email:", email);
-      const response = await axios.post("/api/subadmin/forgot-password/request", 
-        null, 
-        { params: { email } }
+      const response = await axios.post(
+        `http://localhost:8282/masteradmin/forgot-password/request?email=${email}`
       );
       
       console.log("OTP request response:", response.data);

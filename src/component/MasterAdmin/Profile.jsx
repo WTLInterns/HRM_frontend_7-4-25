@@ -41,8 +41,8 @@ const Profile = () => {
       });
       
       // Set preview image if available
-      if (parsedUser.profileImg) {
-        setPreviewImage(`http://localhost:8282/images/${parsedUser.profileImg}`);
+      if (parsedUser.email) {
+        setPreviewImage(`http://localhost:8282/masteradmin/profileImg?email=${parsedUser.email}`);
       }
     }
   }, []);
@@ -62,8 +62,8 @@ const Profile = () => {
         });
         
         // Reset image preview
-        if (userData.profileImg) {
-          setPreviewImage(`http://localhost:8282/images/${userData.profileImg}`);
+        if (userData.email) {
+          setPreviewImage(`http://localhost:8282/masteradmin/profileImg?email=${userData.email}`);
         } else {
           setPreviewImage(null);
         }
@@ -156,8 +156,8 @@ const Profile = () => {
       sessionStorage.setItem("profileUpdated", Date.now().toString());
       
       // Update the preview image with the new image path
-      if (updatedUser.profileImg) {
-        setPreviewImage(`http://localhost:8282/images/${updatedUser.profileImg}`);
+      if (updatedUser.email) {
+        setPreviewImage(`http://localhost:8282/masteradmin/profileImg?email=${updatedUser.email}`);
       }
       
       setIsEditing(false);
