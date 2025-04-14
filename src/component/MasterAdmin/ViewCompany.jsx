@@ -17,109 +17,21 @@ const ViewCompany = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch companies from localStorage
+    // Fetch companies from backend API
     const fetchCompanies = async () => {
       try {
-        // Simulate loading delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setLoading(true);
         
-        // Get companies from localStorage
-        const storedCompanies = JSON.parse(localStorage.getItem('companies') || '[]');
+        // Fetch data from the API
+        const response = await fetch('http://localhost:8282/api/subadmin/all');
         
-        // If no companies in localStorage, use mock data
-        if (storedCompanies.length === 0) {
-          const mockCompanies = [
-            {
-              id: 1,
-              name: "John",
-              lastName: "Doe",
-              registerCompanyName: "Tech Solutions Inc",
-              email: "info@techsolutions.com",
-              phone: "9876543210",
-              address: "123 Tech Park, Silicon Valley, CA",
-              hasSignature: true,
-              hasStamp: true,
-              status: "Active"
-            },
-            {
-              id: 2,
-              name: "Jane",
-              lastName: "Smith",
-              registerCompanyName: "Global Innovations Ltd",
-              email: "contact@globalinnovations.com",
-              phone: "8765432109",
-              address: "456 Innovation Hub, New York, NY",
-              hasSignature: true,
-              hasStamp: false,
-              status: "Active"
-            },
-            {
-              id: 3,
-              name: "Robert",
-              lastName: "Johnson",
-              registerCompanyName: "Nexus Enterprises",
-              email: "support@nexus.com",
-              phone: "7654321098",
-              address: "789 Business Plaza, Chicago, IL",
-              hasSignature: false,
-              hasStamp: true,
-              status: "Inactive"
-            },
-            {
-              id: 4,
-              name: "Emily",
-              lastName: "Brown",
-              registerCompanyName: "Pinnacle Systems",
-              email: "info@pinnaclesystems.com",
-              phone: "6543210987",
-              address: "321 Corporate Drive, Boston, MA",
-              hasSignature: true,
-              hasStamp: true,
-              status: "Active"
-            },
-            {
-              id: 5,
-              name: "Michael",
-              lastName: "Wilson",
-              registerCompanyName: "Horizon Technologies",
-              email: "contact@horizontech.com",
-              phone: "5432109876",
-              address: "654 Tech Avenue, Austin, TX",
-              hasSignature: false,
-              hasStamp: false,
-              status: "Inactive"
-            },
-            {
-              id: 6,
-              name: "Sarah",
-              lastName: "Davis",
-              registerCompanyName: "Velocity Software",
-              email: "info@velocitysw.com",
-              phone: "4321098765",
-              address: "987 Tech Boulevard, Seattle, WA",
-              hasSignature: true,
-              hasStamp: true,
-              status: "Active"
-            },
-            {
-              id: 7,
-              name: "David",
-              lastName: "Miller",
-              registerCompanyName: "Zenith Networks",
-              email: "support@zenithnet.com",
-              phone: "3210987654",
-              address: "456 Digital Drive, Denver, CO",
-              hasSignature: false,
-              hasStamp: true,
-              status: "Inactive"
-            }
-          ];
-          setCompanies(mockCompanies);
-          localStorage.setItem('companies', JSON.stringify(mockCompanies));
-        } else {
-          setCompanies(storedCompanies);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
         
+        const data = await response.json();
+        console.log('Fetched subadmin data:', data);
+        setCompanies(data);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching companies:", error);
@@ -128,6 +40,18 @@ const ViewCompany = () => {
     };
     
     fetchCompanies();
+    
+    // Set up event listener for company updates
+    const handleCompanyUpdates = () => {
+      fetchCompanies();
+    };
+    
+    window.addEventListener('companiesUpdated', handleCompanyUpdates);
+    
+    // Cleanup event listener on component unmount
+    return () => {
+      window.removeEventListener('companiesUpdated', handleCompanyUpdates);
+    };
   }, []); // Empty dependency array means this effect runs once on mount
 
   const handleSearch = (e) => {
@@ -137,10 +61,10 @@ const ViewCompany = () => {
 
   // Filter companies based on search term
   const filteredCompanies = companies.filter(company => 
-    company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    company.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    company.registerCompanyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    company.email.toLowerCase().includes(searchTerm.toLowerCase())
+    company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.registercompanyname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Pagination logic
@@ -182,23 +106,39 @@ const ViewCompany = () => {
   };
 
   // Confirm delete action
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (companyToDelete) {
-      const updatedCompanies = companies.filter(company => company.id !== companyToDelete.id);
-      setCompanies(updatedCompanies);
-      localStorage.setItem('companies', JSON.stringify(updatedCompanies));
-      
-      // Update pagination if needed
-      if (currentRows.length === 1 && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
+      try {
+        // Make an API call to delete the company
+        const response = await fetch(`http://localhost:8282/api/subadmin/delete/${companyToDelete.id}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        // Update the local state after successful deletion
+        const updatedCompanies = companies.filter(company => company.id !== companyToDelete.id);
+        setCompanies(updatedCompanies);
+        
+        // Update pagination if needed
+        if (currentRows.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        }
+        
+        // Dispatch custom event to update dashboard
+        window.dispatchEvent(new Event('companiesUpdated'));
+        
+        // Close the modal
+        setShowDeleteModal(false);
+        setCompanyToDelete(null);
+        
+        alert('Company deleted successfully');
+      } catch (error) {
+        console.error("Error deleting company:", error);
+        alert("Failed to delete company. Please try again.");
       }
-      
-      // Dispatch custom event to update dashboard
-      window.dispatchEvent(new Event('companiesUpdated'));
-      
-      // Close the modal
-      setShowDeleteModal(false);
-      setCompanyToDelete(null);
     }
   };
 
@@ -208,10 +148,27 @@ const ViewCompany = () => {
     setCompanyToDelete(null);
   };
 
-  const handleSendLoginDetails = (id) => {
-    const company = companies.find(c => c.id === id);
-    if (company) {
-      alert(`Login details sent to ${company.email}`);
+  const handleSendLoginDetails = async (id) => {
+    try {
+      const company = companies.find(c => c.id === id);
+      if (!company || !company.email) {
+        alert('Company email not found');
+        return;
+      }
+      
+      // Call the API to send login details
+      const response = await fetch(`http://localhost:8282/api/subadmin/send-email/${company.email}`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      alert(`Login details successfully sent to ${company.email}`);
+    } catch (error) {
+      console.error('Error sending login details:', error);
+      alert('Failed to send login details. Please try again.');
     }
   };
 
@@ -234,7 +191,7 @@ const ViewCompany = () => {
               <p className="mb-2">Are you sure you want to delete this company?</p>
               {companyToDelete && (
                 <div className="bg-slate-900/60 p-3 rounded-md border border-slate-700 mt-3">
-                  <p className="font-semibold text-blue-400">{companyToDelete.registerCompanyName}</p>
+                  <p className="font-semibold text-blue-400">{companyToDelete.registercompanyname}</p>
                   <p className="text-sm text-gray-300">{companyToDelete.email}</p>
                 </div>
               )}
@@ -325,7 +282,7 @@ const ViewCompany = () => {
                             <FaUser className="h-4 w-4 text-blue-400" />
                           </div>
                           <div className="ml-2">
-                            <div className="text-sm font-medium text-gray-100">{company.name} {company.lastName}</div>
+                            <div className="text-sm font-medium text-gray-100">{company.name} {company.lastname}</div>
                           </div>
                         </div>
                       </td>
@@ -337,7 +294,7 @@ const ViewCompany = () => {
                             <FaBuilding className="h-4 w-4 text-indigo-400" />
                           </div>
                           <div className="ml-2">
-                            <div className="text-sm font-medium text-gray-100">{company.registerCompanyName}</div>
+                            <div className="text-sm font-medium text-gray-100">{company.registercompanyname}</div>
                             <div className="text-xs text-gray-400 truncate max-w-[150px]">{company.address}</div>
                           </div>
                         </div>
@@ -346,7 +303,7 @@ const ViewCompany = () => {
                       {/* Contact Info */}
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div className="text-sm text-gray-100">{company.email}</div>
-                        <div className="text-sm text-gray-400">{company.phone}</div>
+                        <div className="text-sm text-gray-400">{company.phoneno}</div>
                       </td>
                       
                       {/* Documents */}
@@ -354,19 +311,19 @@ const ViewCompany = () => {
                         <div className="flex flex-col space-y-1">
                           <span 
                             className={`px-1 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              company.hasSignature ? 'bg-green-900/50 text-green-400 border border-green-800' : 'bg-gray-900/50 text-gray-400 border border-gray-800'
+                              company.signature ? 'bg-green-900/50 text-green-400 border border-green-800' : 'bg-gray-900/50 text-gray-400 border border-gray-800'
                             } shadow-sm`}
                             title="Signature"
                           >
-                            <FaSignature className="mr-1" /> {company.hasSignature ? "Yes" : "No"}
+                            <FaSignature className="mr-1" /> {company.signature ? "Yes" : "No"}
                           </span>
                           <span 
                             className={`px-1 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              company.hasStamp ? 'bg-green-900/50 text-green-400 border border-green-800' : 'bg-gray-900/50 text-gray-400 border border-gray-800'
+                              company.stampImg ? 'bg-green-900/50 text-green-400 border border-green-800' : 'bg-gray-900/50 text-gray-400 border border-gray-800'
                             } shadow-sm`}
                             title="Company Stamp"
                           >
-                            <FaStamp className="mr-1" /> {company.hasStamp ? "Yes" : "No"}
+                            <FaStamp className="mr-1" /> {company.stampImg ? "Yes" : "No"}
                           </span>
                         </div>
                       </td>
